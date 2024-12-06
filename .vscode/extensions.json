@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "hashicorp.terraform",
+    "hashicorp.sentinel",
+    "hashicorp.hcl"
+  ]
+}

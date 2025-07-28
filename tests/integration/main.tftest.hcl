@@ -4,9 +4,9 @@ variables {
   root_volume_size = 10
   data_volume_size = 20
   tags = {
+    Name        = "Component Analysis"
     Terraform   = "true"
-    Environment = "Dev"
-    Project     = "Internal Developer Platform (IDP)"
+    Environment = "Test"
     Owner       = "DevOps"
   }
 }
@@ -24,7 +24,7 @@ run "create_module_dtrack" {
 
   # Assert
   assert {
-    condition     = (module.dependency_track.ec2_instance_id != "")
+    condition     = (module.component_analysis.ec2_instance_id != "")
     error_message = "EC2 instance not created"
   }
 }

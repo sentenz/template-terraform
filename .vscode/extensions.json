@@ -2,6 +2,7 @@
   "recommendations": [
     "hashicorp.terraform",
     "hashicorp.sentinel",
-    "hashicorp.hcl"
+    "hashicorp.hcl",
+    "task.vscode-task"
   ]
 }

@@ -6,32 +6,40 @@ variable "name" {
   default     = "aws-ec2"
 }
 
-locals {
-  key_name      = "${var.name}_key-pair"
-  vpc_name      = "${var.name}_vpc"
-  sg_name       = "${var.name}_security-group"
-  ec2_name      = "${var.name}_ec2-instance"
-  eip_name      = "${var.name}_eip"
-  ebs_root_name = "${var.name}_ebs-root"
-  ebs_data_name = "${var.name}_ebs-data"
-}
-
 variable "tags" {
   description = "A map of tags to add to all resources."
   type        = map(string)
   default = {
+    Name        = "AWS EC2 Module"
     Terraform   = "true"
-    Environment = "Development"
-    Project     = "AWS EC2 Module"
+    Environment = "Test"
     Owner       = "DevOps"
   }
 }
 
+variable "key_pair_create" {
+  description = "Whether to create a new SSH key pair for EC2 access."
+  type        = bool
+  default     = false
+}
+
 variable "key_path" {
-  description = "Path to the public key for SSH access."
+  description = "Path to SSH public key file for SSH access."
   type        = string
   sensitive   = true
-  default     = "~/.ssh/aws.pub"
+  default     = null
+}
+
+variable "vpc_create" {
+  description = "Whether to create a new VPC."
+  type        = bool
+  default     = false
+}
+
+variable "vpc_id" {
+  description = "ID of existing VPC to use."
+  type        = string
+  default     = null
 }
 
 variable "vpc_cidr" {
@@ -178,6 +186,18 @@ variable "sg_ingress_with_cidr_blocks" {
 variable "ec2_instance_type" {
   description = "The type to provide an EC2 instance resource."
   type        = string
+}
+
+variable "ec2_subnet_id" {
+  description = "The VPC Subnet ID to launch in."
+  type        = string
+  default     = null
+}
+
+variable "ec2_ignore_ami_changes" {
+  description = "Whether Terraform should ignore changes to the AMI ID. NOTE Changing this value will result in the replacement of the instance."
+  type        = bool
+  default     = true
 }
 
 variable "eip_create" {

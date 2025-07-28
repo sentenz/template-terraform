@@ -5,133 +5,176 @@ ifneq (,$(wildcard .env))
 	export
 endif
 
-# Define Variables
-
-ENV ?= 
-
 # Define Targets
 
 default: help
 
 help:
-	@awk 'BEGIN {printf "TASK\n\tA centralized collection of commands and operations used in this project.\n\n"}'
+	@awk 'BEGIN {printf "TASK\n\tA collection of task runner used in current project.\n\n"}'
 	@awk 'BEGIN {printf "USAGE\n\tmake $(shell tput -Txterm setaf 6)[target]$(shell tput -Txterm sgr0)\n\n"}' $(MAKEFILE_LIST)
 	@awk '/^##/{c=substr($$0,3);next}c&&/^[[:alpha:]][[:alnum:]_-]+:/{print "$(shell tput -Txterm setaf 6)\t" substr($$1,1,index($$1,":")) "$(shell tput -Txterm sgr0)",c}1{c=0}' $(MAKEFILE_LIST) | column -s: -t
 .PHONY: help
 
-## Setup the Software Development environment
+# Prompt for credentials and cache them for the current session
+permission:
+	@sudo -v
+.PHONY: permission
+
+## Initialize a software development workspace with requisites
+bootstrap:
+	@$(MAKE) -s permission
+	cd $(@D)/scripts && chmod +x bootstrap.sh && ./bootstrap.sh
+.PHONY: bootstrap
+
+## Install and configure all dependencies essential for development
 setup:
+	@$(MAKE) -s permission
 	cd $(@D)/scripts && chmod +x setup.sh && ./setup.sh
 .PHONY: setup
 
-## Setup the Everything as Code (XaC) environment
-setup-xac:
-	cd $(@D)/scripts && chmod +x setup_xac.sh && ./setup_xac.sh
-.PHONY: setup-xac
+## Remove development artifacts and restore the host to its pre-setup state
+teardown:
+	@$(MAKE) -s permission
+	cd $(@D)/scripts && chmod +x teardown.sh && ./teardown.sh
+.PHONY: teardown
 
-## Download the module by (re)initialize the Terraform configuration
-terraform-init:
-	cd environments/$(ENV) && terraform init -upgrade
-.PHONY: terraform-init
+# Policy-as-Code compliance testing
+tf-infra-test-policy:
+	sentinel test $$(find . -name "*.sentinel" -type f)
+.PHONY: tf-infra-test-policy
 
-## Validate Terraform configuration
-terraform-validate:
+# Unit Testing of Terraform Infrastructure Code
+tf-infra-test-unit:
+	terraform test -test-directory="tests/unit"
+.PHONY: tf-infra-test-unit
+
+# Integration Testing of Terraform Infrastructure Code
+tf-infra-test-integration:
+	terraform test -test-directory="tests/integration"
+.PHONY: tf-infra-test-integration
+
+## Perform aggregate testing of Terraform Infrastructure Code
+tf-infra-test:
+	@$(MAKE) -s tf-infra-test-policy
+	@$(MAKE) -s tf-infra-test-unit
+.PHONY: tf-infra-test
+
+# Initialize Terraform Configuration for the Target Environment
+tf-infra-init:
+	cd environments/$(ENV) && terraform init
+.PHONY: tf-infra-init
+
+# Validate Terraform Configuration for the Target Environment
+tf-infra-validate:
 	cd environments/$(ENV) && terraform validate
-.PHONY: terraform-validate
+.PHONY: tf-infra-validate
 
-## Generate an execution plan based on existing infrastructure and configuration
-terraform-plan:
+# Generate Execution Plan for the Target Environment
+tf-infra-plan:
 	cd environments/$(ENV) && terraform plan -out=tfplan
-.PHONY: terraform-plan
+.PHONY: tf-infra-plan
 
-## Execute the planned changes, respecting resource dependencies
-terraform-apply:
-	cd environments/$(ENV) && terraform apply "tfplan" && rm -f tfplan
-.PHONY: terraform-apply
-
-## Destroy the Terraform-managed infrastructure
-terraform-destroy:
-	cd environments/$(ENV) && terraform destroy -auto-approve
-.PHONY: terraform-destroy
-
-# Interactive Terraform prompt to proceed
-terraform-confirm:
+# Interactive User Confirmation before Terraform Apply
+tf-infra-confirm:
 	@echo ""
-	@read -r -p "Proceed with 'terraform' in environment '$(ENV)'? (yes/no): " confirm && \
+	@read -r -p "Proceed with 'terraform apply' in environment '$(ENV)'? (yes/no): " confirm && \
 		if [ "$$confirm" != "yes" ]; then \
 			echo "Aborted!"; \
 			exit 1; \
 		fi
-.PHONY: terraform-confirm
+.PHONY: tf-infra-confirm
+
+# Apply Terraform Plan and Clean Artifacts
+tf-infra-apply:
+	cd environments/$(ENV) && terraform apply "tfplan" && rm -f tfplan
+.PHONY: tf-infra-apply
 
 ## Provisioning of IaC to the specified environment
-terraform-deploy:
-	$(MAKE) terraform-init ENV=$(ENV)
-	$(MAKE) terraform-validate ENV=$(ENV)
-	$(MAKE) terraform-plan ENV=$(ENV)
-	$(MAKE) terraform-confirm ENV=$(ENV)
-	$(MAKE) terraform-apply ENV=$(ENV)
-.PHONY: terraform-deploy
+tf-infra-deploy:
+	@$(MAKE) -s tf-infra-init
+	@$(MAKE) -s tf-infra-validate
+	# @$(MAKE) -s tf-infra-test
+	@$(MAKE) -s tf-infra-plan
+	@$(MAKE) -s tf-infra-confirm
+	@$(MAKE) -s tf-infra-apply
+.PHONY: tf-infra-deploy
 
-## Provisioning of IaC to the development environment
-terraform-deploy-dev:
-	$(MAKE) terraform-deploy ENV=dev
-.PHONY: terraform-deploy-dev
+## Destroy Infrastructure for Target Environment
+tf-infra-destroy:
+	cd environments/$(ENV) && terraform destroy
+.PHONY: tf-infra-destroy
 
-## Provisioning of IaC to the production environment
-terraform-deploy-prod:
-	$(MAKE) terraform-deploy ENV=prod
-.PHONY: terraform-deploy-prod
-
-## Provisioning of IaC to the development environment
-terraform-destroy-dev:
-	$(MAKE) terraform-destroy ENV=dev
-.PHONY: terraform-destroy-dev
-
-## Provisioning of IaC to the production environment
-terraform-destroy-prod:
-	$(MAKE) terraform-destroy ENV=prod
-.PHONY: terraform-destroy-prod
-
-## Generate documentation from Terraform modules
-terraform-docs:
-	terraform-docs markdown .
-.PHONY: terraform-docs
-
-## Perform scan of Infrastructure as Code (IaC) files for misconfigurations
-terraform-lint:
-	tflint
+## Static Analysis and Security Scanning of Terraform Code
+lint-tf-config:
+	tflint --recursive
 	trivy config $(@D)/ --tf-exclude-downloaded-modules
-.PHONY: terraform-lint
+.PHONY: lint-tf-config
 
-## Perform formatting of Infrastructure as Code (IaC) files
-terraform-format:
-	terraform fmt $$(find . -name "*.tf" -type f)
-	sentinel fmt $$(find . -name "*.sentinel" -type f)
-.PHONY: terraform-format
+## Formatting of Terraform and Sentinel Files
+format-tf-config:
+	terraform fmt -recursive
+	sentinel fmt -check=false $$(find . -type f -name "*.sentinel" -not -path "*/.sentinel/*")
+.PHONY: format-tf-config
 
-## Perform compliance testing using Policy-as-Code to validate Infrastructure as Code (IaC)
-terraform-test-policy:
-	sentinel test $$(find . -name "*.sentinel" -type f)
-.PHONY: terraform-test-policy
+# Usage: make docs-tf-module <module>
+#
+## Documentation Generation for Terraform Modules
+docs-tf-module:
+	@if [ "$(filter-out $@,$(MAKECMDGOALS))" != "" ]; then \
+		terraform-docs markdown --output-file README.md "$(filter-out $@,$(MAKECMDGOALS))"; \
+	else \
+		terraform-docs markdown --output-file README.md .; \
+	fi
+.PHONY: docs-tf-module
 
-## Perform unit testing for Infrastructure as Code (IaC)
-terraform-test-unit:
-	terraform test -test-directory="tests/unit"
-.PHONY: terraform-test-unit
+# Summary: Use the key fingerprint or email to add this GPG key to your `.sops.yaml` configuration.
+#
+# List keys with after gteneration:
+#   gpg --list-keys --keyid-format LONG
+#
+## Generate a new GPG key pair for use with SOPS (interactive)
+crypto-sops-generate-key:
+	gpg --full-generate-key
+.PHONY: crypto-sops-generate-key
 
-## Perform integration testing for Infrastructure as Code (IaC)
-terraform-test-integration:
-	terraform test -test-directory="tests/integration"
-.PHONY: terraform-test-integration
+# Usage: make crypto-sops-encrypt <file>
+#
+## Encrypt File using SOPS
+crypto-sops-encrypt:
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
+		echo "usage: make crypto-sops-encrypt <file>"; \
+		exit 1; \
+	fi
+	@export PATH="${PATH}:$(go env GOPATH)/bin"
+	sops --encrypt --in-place "$(filter-out $@,$(MAKECMDGOALS))"
+.PHONY: crypto-sops-encrypt
 
-## Perform software testing for Infrastructure as Code (IaC)
-terraform-test:
-	$(MAKE) terraform-test-policy
-	$(MAKE) terraform-test-unit
-.PHONY: terraform-test
+# Usage: make crypto-sops-decrypt <file>
+#
+## Decrypt File using SOPS
+crypto-sops-decrypt:
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
+		echo "usage: make crypto-sops-encrypt <file>"; \
+		exit 1; \
+	fi
+	@export PATH="${PATH}:$(go env GOPATH)/bin"
+	sops --decrypt --in-place "$(filter-out $@,$(MAKECMDGOALS))"
+.PHONY: crypto-sops-decrypt
 
-## Create a SSH session to the AWS EC2 Instance in the terminal
-aws-terminal:
-	ssh aws
-.PHONY: aws-terminal
+## SSH Terminal Session to AWS EC2 Instance
+aws-terminal-connect:
+	# ssh -i ~/.ssh/aws ec2-user@ec2-35-156-122-248.eu-central-1.compute.amazonaws.com
+	ssh aws-$(ENV)
+.PHONY: aws-terminal-connect
+
+## Workflow of the Setup process
+workflow-setup-execute:
+	@$(MAKE) -s bootstrap
+	@$(MAKE) -s setup
+.PHONY: workflow-setup-execute
+
+## Workflow of the Documentation process
+workflow-docs-execute:
+	@$(MAKE) -s docs-tf-module .
+	@$(MAKE) -s docs-tf-module modules/aws-ec2
+.PHONY: workflow-docs-execute

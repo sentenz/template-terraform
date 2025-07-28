@@ -1,12 +1,12 @@
 # Test Fixtures
 variables {
-  instance_type    = "t3.nano"
+  instance_type    = "t3.small"
   root_volume_size = 10
   data_volume_size = 20
   tags = {
+    Name        = "Component Analysis"
     Terraform   = "true"
-    Environment = "Dev"
-    Project     = "Internal Developer Platform (IDP)"
+    Environment = "Test"
     Owner       = "DevOps"
   }
 }

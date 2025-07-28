@@ -15,7 +15,7 @@ variable "region" {
 variable "profile" {
   description = "The AWS credentials stored in `~/.aws/credentials` under a specific profile."
   type        = string
-  default     = "prod"
+  default     = "stage"
 }
 
 variable "tags" {
@@ -24,7 +24,7 @@ variable "tags" {
   default = {
     Name        = "Component Analysis"
     Terraform   = "true"
-    Environment = "Prod"
+    Environment = "Stage"
     Owner       = "DevOps"
   }
 }
@@ -32,14 +32,14 @@ variable "tags" {
 variable "key_pair_create" {
   description = "Whether to create a new SSH key pair for EC2 access."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "key_path" {
   description = "Path to the public key for SSH access."
   type        = string
   sensitive   = true
-  default     = "~/.ssh/samsongroup_e_devops_service_sshkey.pub"
+  default     = "~/.ssh/samsongroup_e_dev_devops_service_sshkey.pub"
 
   validation {
     condition     = can(regex("^.*\\.pub$", var.key_path))
@@ -50,17 +50,17 @@ variable "key_path" {
 variable "dtrack_ec2_instance_type" {
   description = "The type to provide an EC2 instance resource."
   type        = string
-  default     = "t3.xlarge"
+  default     = "t3.large"
 }
 
 variable "dtrack_ebs_root_volume_size" {
   description = "Size of the root EBS volume in GB."
   type        = number
-  default     = 30
+  default     = 10
 }
 
 variable "dtrack_ebs_data_volume_size" {
   description = "Size of the data EBS volume in GB."
   type        = number
-  default     = 30
+  default     = 10
 }

@@ -1,0 +1,92 @@
+# https://taskfile.dev
+
+version: "3"
+
+env:
+  ENV: stage
+
+dotenv: [".env"]
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  sudo:
+    desc: Prompt for sudo credentials and cache them for this session
+    interactive: true
+    cmds:
+      - sudo -v
+    silent: true
+    internal: true
+
+  bootstrap:
+    desc: Initialize a software development workspace with requisites
+    interactive: true
+    deps: [sudo]
+    dir: scripts
+    cmds:
+      - chmod +x bootstrap.sh
+      - ./bootstrap.sh
+
+  setup:
+    desc: Install and configure all dependencies essential for development
+    interactive: true
+    deps: [sudo]
+    dir: scripts
+    cmds:
+      - chmod +x setup.sh
+      - ./setup.sh
+
+  teardown:
+    desc: Remove development artifacts and restore the host to its pre-setup state
+    interactive: true
+    deps: [sudo]
+    dir: scripts
+    cmds:
+      - chmod +x teardown.sh
+      - ./teardown.sh
+
+  sops-generate-key:
+    desc: Generate a new GPG key pair for use with SOPS (interactive)
+    summary: |
+      Use the key fingerprint or email to add this GPG key to your `.sops.yaml` configuration.
+
+      List keys with after gteneration:
+        gpg --list-keys --keyid-format LONG
+    cmds:
+      - gpg --full-generate-key
+
+  sops-encrypt:
+    desc: Create a SOPS encrypted file.
+    summary: |
+      Encrypts a file using SOPS with the vault password file
+
+      usage: task sops-encrypt -- <file>
+    cmds:
+      - |
+        export PATH="${PATH}:$(go env GOPATH)/bin"
+
+        if [ -z "{{.CLI_ARGS}}" ]; then
+          echo "usage: task sops-encrypt -- <file>"
+          exit 1
+        fi
+        sops --encrypt --in-place "{{.CLI_ARGS}}"
+
+  sops-decrypt:
+    desc: Decrypt an existing SOPS encrypted file
+    summary: |
+      Decrypts a SOPS encrypted file using the vault password file.
+
+      usage: task sops-decrypt -- <file>
+    cmds:
+      - |
+        export PATH="${PATH}:$(go env GOPATH)/bin"
+
+        if [ -z "{{.CLI_ARGS}}" ]; then
+          echo "usage: task sops-decrypt -- <file>"
+          exit 1
+        fi
+
+        sops --decrypt --in-place "{{.CLI_ARGS}}"

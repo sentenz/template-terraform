@@ -10,8 +10,8 @@ endif
 default: help
 
 help:
-	@awk 'BEGIN {printf "TASK\n\tA collection of task runner used in current project.\n\n"}'
-	@awk 'BEGIN {printf "USAGE\n\tmake $(shell tput -Txterm setaf 6)[target]$(shell tput -Txterm sgr0)\n\n"}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {printf "Task\n\tA collection of tasks used in current project.\n\n"}'
+	@awk 'BEGIN {printf "Usage\n\tmake $(shell tput -Txterm setaf 6)[target]$(shell tput -Txterm sgr0)\n\n"}' $(MAKEFILE_LIST)
 	@awk '/^##/{c=substr($$0,3);next}c&&/^[[:alpha:]][[:alnum:]_-]+:/{print "$(shell tput -Txterm setaf 6)\t" substr($$1,1,index($$1,":")) "$(shell tput -Txterm sgr0)",c}1{c=0}' $(MAKEFILE_LIST) | column -s: -t
 .PHONY: help
 

@@ -5,15 +5,23 @@ ifneq (,$(wildcard .env))
 	export
 endif
 
+# Define Variables
+SHELL := bash
+.SHELLFLAGS := -euo pipefail -c
+
+TF = terraform -chdir=environments/$(ENV)
+
 # Define Targets
 
 default: help
 
 help:
-	@awk 'BEGIN {printf "Task\n\tA collection of tasks used in current project.\n\n"}'
-	@awk 'BEGIN {printf "Usage\n\tmake $(shell tput -Txterm setaf 6)[target]$(shell tput -Txterm sgr0)\n\n"}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {printf "Tasks\n\tA collection of tasks used in the current project.\n\n"}'
+	@awk 'BEGIN {printf "Usage\n\tmake $(shell tput -Txterm setaf 6)<task>$(shell tput -Txterm sgr0)\n\n"}' $(MAKEFILE_LIST)
 	@awk '/^##/{c=substr($$0,3);next}c&&/^[[:alpha:]][[:alnum:]_-]+:/{print "$(shell tput -Txterm setaf 6)\t" substr($$1,1,index($$1,":")) "$(shell tput -Txterm sgr0)",c}1{c=0}' $(MAKEFILE_LIST) | column -s: -t
 .PHONY: help
+
+# ── Setup & Teardown ─────────────────────────────────────────────────────────────────────────────
 
 # Prompt for credentials and cache them for the current session
 permission:
@@ -38,94 +46,117 @@ teardown:
 	cd $(@D)/scripts && chmod +x teardown.sh && ./teardown.sh
 .PHONY: teardown
 
-# Policy-as-Code compliance testing
-tf-infra-test-policy:
-	sentinel test $$(find . -name "*.sentinel" -type f)
-.PHONY: tf-infra-test-policy
-
-# Unit Testing of Terraform Infrastructure Code
-tf-infra-test-unit:
-	terraform test -test-directory="tests/unit"
-.PHONY: tf-infra-test-unit
-
-# Integration Testing of Terraform Infrastructure Code
-tf-infra-test-integration:
-	terraform test -test-directory="tests/integration"
-.PHONY: tf-infra-test-integration
-
-## Perform aggregate testing of Terraform Infrastructure Code
-tf-infra-test:
-	@$(MAKE) -s tf-infra-test-policy
-	@$(MAKE) -s tf-infra-test-unit
-.PHONY: tf-infra-test
+# ── Terraform Deploy & Destroy ───────────────────────────────────────────────────────────────────
 
 # Initialize Terraform Configuration for the Target Environment
 tf-infra-init:
-	cd environments/$(ENV) && terraform init
+	$(TF) init -reconfigure
 .PHONY: tf-infra-init
 
 # Validate Terraform Configuration for the Target Environment
 tf-infra-validate:
-	cd environments/$(ENV) && terraform validate
+	$(TF) validate
 .PHONY: tf-infra-validate
 
-# Generate Execution Plan for the Target Environment
+# Usage: $(MAKE) tf-infra-plan TARGET=<module>
+#
+# Generate execution plan for the Target Environment with optional TARGET for Module provisioning 
 tf-infra-plan:
-	cd environments/$(ENV) && terraform plan -out=tfplan
+	$(TF) plan -out=terraform.tfplan $(if $(strip $(TARGET)),-target=module.$(TARGET),)
 .PHONY: tf-infra-plan
 
 # Interactive User Confirmation before Terraform Apply
 tf-infra-confirm:
 	@echo ""
-	@read -r -p "Proceed with 'terraform apply' in environment '$(ENV)'? (yes/no): " confirm && \
-		if [ "$$confirm" != "yes" ]; then \
-			echo "Aborted!"; \
+	@read -r -p "Confirm: Proceed with 'terraform apply' in '$(ENV)'$(if $(TARGET), targeting '$(TARGET)',)? [yes $(ENV)|no] " confirm; \
+		if [[ "$$confirm" != "yes $(ENV)" ]]; then \
+			echo "Aborted."; \
 			exit 1; \
 		fi
 .PHONY: tf-infra-confirm
 
+# IMPORTANT Do NOT pass -target flag, the saved plan already encodes targeting.
+#
 # Apply Terraform Plan and Clean Artifacts
 tf-infra-apply:
-	cd environments/$(ENV) && terraform apply "tfplan" && rm -f tfplan
+	$(TF) apply "terraform.tfplan"
+	rm -f environments/$(ENV)/terraform.tfplan
 .PHONY: tf-infra-apply
 
-## Provisioning of IaC to the specified environment
+## Deploy Infrastructure for Target Environment
 tf-infra-deploy:
 	@$(MAKE) -s tf-infra-init
 	@$(MAKE) -s tf-infra-validate
-	# @$(MAKE) -s tf-infra-test
+	# @$(MAKE) -s tf-test
 	@$(MAKE) -s tf-infra-plan
 	@$(MAKE) -s tf-infra-confirm
 	@$(MAKE) -s tf-infra-apply
 .PHONY: tf-infra-deploy
 
-## Destroy Infrastructure for Target Environment
+## Deploy Infrastructure for Target Environment provisioning Component Analysis
+tf-infra-deploy-component-analysis:
+	@$(MAKE) -s tf-infra-deploy TARGET=component_analysis
+.PHONY: tf-infra-deploy-component-analysis
+
+# Usage: $(MAKE) tf-infra-destroy TARGET=<module>
+#
+## Destroy Infrastructure for Target Environment with optional TARGET
 tf-infra-destroy:
-	cd environments/$(ENV) && terraform destroy
+	$(TF) destroy $(if $(strip $(TARGET)),-target=module.$(TARGET),)
 .PHONY: tf-infra-destroy
 
+## Destroy Infrastructure for Target Environment provisioning Component Analysis
+tf-infra-destroy-component-analysis:
+	@$(MAKE) -s tf-infra-destroy TARGET=component_analysis
+.PHONY: tf-infra-destroy-component-analysis
+
+# ── Terraform Test & Analysis ────────────────────────────────────────────────────────────────────
+
+# Policy-as-Code compliance testing
+tf-test-policy:
+	sentinel test $$(find . -name "*.sentinel" -type f)
+.PHONY: tf-test-policy
+
+# Unit Testing of Terraform Infrastructure Code
+tf-test-unit:
+	terraform test -test-directory="tests/unit"
+.PHONY: tf-test-unit
+
+# Integration Testing of Terraform Infrastructure Code
+tf-test-integration:
+	terraform test -test-directory="tests/integration"
+.PHONY: tf-test-integration
+
+## Perform aggregate testing of Terraform Infrastructure Code
+tf-test-infra:
+	@$(MAKE) -s tf-test-policy
+	@$(MAKE) -s tf-test-unit
+.PHONY: tf-test-infra
+
 ## Static Analysis and Security Scanning of Terraform Code
-lint-tf-config:
+tf-lint-infra:
 	tflint --recursive
 	trivy config $(@D)/ --tf-exclude-downloaded-modules
-.PHONY: lint-tf-config
+.PHONY: tf-lint-infra
 
 ## Formatting of Terraform and Sentinel Files
-format-tf-config:
+tf-format-infra:
 	terraform fmt -recursive
 	sentinel fmt -check=false $$(find . -type f -name "*.sentinel" -not -path "*/.sentinel/*")
-.PHONY: format-tf-config
+.PHONY: tf-format-infra
 
-# Usage: make docs-tf-module <module>
+# ── Terraform Miscellaneous ──────────────────────────────────────────────────────────────────────
+
+# Usage: make tf-docs-infra <module>
 #
 ## Documentation Generation for Terraform Modules
-docs-tf-module:
+tf-docs-infra:
 	@if [ "$(filter-out $@,$(MAKECMDGOALS))" != "" ]; then \
 		terraform-docs markdown --output-file README.md "$(filter-out $@,$(MAKECMDGOALS))"; \
 	else \
 		terraform-docs markdown --output-file README.md .; \
 	fi
-.PHONY: docs-tf-module
+.PHONY: tf-docs-infra
 
 # Summary: Use the key fingerprint or email to add this GPG key to your `.sops.yaml` configuration.
 #
@@ -161,11 +192,19 @@ crypto-sops-decrypt:
 	sops --decrypt --in-place "$(filter-out $@,$(MAKECMDGOALS))"
 .PHONY: crypto-sops-decrypt
 
-## SSH Terminal Session to AWS EC2 Instance
-aws-terminal-connect:
-	# ssh -i ~/.ssh/aws ec2-user@ec2-35-156-122-248.eu-central-1.compute.amazonaws.com
-	ssh aws-$(ENV)
-.PHONY: aws-terminal-connect
+# Usage: $(MAKE) template-aws-connect-ssh-<instance>
+#
+#	NOTE Optoins to connect to an AWS EC2 instance, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html
+#
+# Template for connecting to an AWS EC2 instance over Secure Shell (SSH)
+template-aws-connect-ssh-%:
+	ssh aws-$*-$(ENV)
+.PHONY: template-aws-connect-ssh-%
+
+## Connect to an AWS EC2 instance for Component Analysis over SSH
+aws-connect-ssh-component-analysis:
+	@$(MAKE) template-aws-connect-ssh-component-analysis
+.PHONY: aws-connect-ssh-component-analysis
 
 ## Workflow of the Setup process
 workflow-setup-execute:
@@ -175,6 +214,6 @@ workflow-setup-execute:
 
 ## Workflow of the Documentation process
 workflow-docs-execute:
-	@$(MAKE) -s docs-tf-module .
-	@$(MAKE) -s docs-tf-module modules/aws-ec2
+	@$(MAKE) -s tf-docs-infra .
+	@$(MAKE) -s tf-docs-infra modules/aws-ec2
 .PHONY: workflow-docs-execute

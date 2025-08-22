@@ -2,7 +2,7 @@
 
 module "key_pair" {
   source  = "terraform-aws-modules/key-pair/aws"
-  version = "2.0.3"
+  version = "2.1.0"
 
   count = var.key_pair_create ? 1 : 0
 
@@ -14,7 +14,7 @@ module "key_pair" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.19.0"
+  version = "6.0.1"
 
   count = var.vpc_create ? 1 : 0
 
@@ -33,13 +33,13 @@ module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "5.3.0"
 
-  name                     = local.sg_name
-  description              = var.sg_description
-  ingress_cidr_blocks      = var.sg_ingress_cidr_blocks
-  ingress_ipv6_cidr_blocks = var.sg_ingress_ipv6_cidr_blocks
-  ingress_rules            = var.sg_ingress_rules
-  ingress_with_cidr_blocks = var.sg_ingress_with_cidr_blocks
-  egress_rules             = var.sg_egress_rules
+  name                     = local.security_group_name
+  description              = var.security_group_description
+  ingress_cidr_blocks      = var.security_group_ingress_cidr_blocks
+  ingress_ipv6_cidr_blocks = var.security_group_ingress_ipv6_cidr_blocks
+  ingress_rules            = var.security_group_ingress_rules
+  ingress_with_cidr_blocks = var.security_group_ingress_with_cidr_blocks
+  egress_rules             = var.security_group_egress_rules
   vpc_id                   = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
 
   tags = var.tags
@@ -47,7 +47,7 @@ module "security_group" {
 
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "5.8.0"
+  version = "6.0.2"
 
   # EC2 Instance
   name                   = local.ec2_name
@@ -58,17 +58,38 @@ module "ec2_instance" {
   vpc_security_group_ids = [module.security_group.security_group_id]
   ignore_ami_changes     = var.ec2_ignore_ami_changes
 
+  # Security Group (disable built-in)
+  create_security_group = false
+
   # Elastic Block Store (EBS) Volume
-  enable_volume_tags = var.ebs_root_enable_tags
-  root_block_device = [{
-    encrypted   = var.ebs_root_encrypted
-    volume_type = var.ebs_root_volume_type
-    throughput  = var.ebs_root_throughput
-    volume_size = var.ebs_root_volume_size
+  ebs_optimized      = var.ebs_optimized
+  enable_volume_tags = var.ebs_enable_volume_tags
+
+  root_block_device = {
+    encrypted  = var.ebs_root_encrypted
+    size       = var.ebs_root_size
+    type       = var.ebs_root_type
+    iops       = var.ebs_root_iops
+    throughput = var.ebs_root_throughput
     tags = {
       Name = local.ebs_root_name
     }
-  }]
+  }
+
+  ebs_volumes = var.ebs_data_create ? {
+    data = {
+      device_name = var.ebs_data_device_name
+      encrypted   = var.ebs_data_encrypted
+      size        = var.ebs_data_size
+      type        = var.ebs_data_type
+      iops        = var.ebs_data_iops
+      throughput  = var.ebs_data_throughput
+      snapshot_id = var.ebs_data_snapshot_id
+      tags = {
+        Name = local.ebs_data_name
+      }
+    }
+  } : null
 
   # Elastic IP (EIP) and Association
   #
@@ -80,26 +101,4 @@ module "ec2_instance" {
   }
 
   tags = var.tags
-}
-
-resource "aws_ebs_volume" "this" {
-  count = var.ebs_data_create ? 1 : 0
-
-  availability_zone = module.ec2_instance.availability_zone
-  size              = var.ebs_data_volume_size
-  type              = var.ebs_data_volume_type
-  encrypted         = var.ebs_data_encrypted
-  throughput        = var.ebs_data_throughput
-
-  tags = {
-    Name = local.ebs_data_name
-  }
-}
-
-resource "aws_volume_attachment" "this" {
-  count = var.ebs_data_create ? 1 : 0
-
-  device_name = var.ebs_data_device_name
-  volume_id   = aws_ebs_volume.this[0].id
-  instance_id = module.ec2_instance.id
 }

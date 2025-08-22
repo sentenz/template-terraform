@@ -20,11 +20,6 @@ variable "key_path" {
   type        = string
   sensitive   = true
   default     = null
-
-  validation {
-    condition     = can(regex("^.*\\.pub$", var.key_path))
-    error_message = "The key_path must be a valid path to a public key file ending with '.pub'."
-  }
 }
 
 variable "vpc_create" {
@@ -49,24 +44,36 @@ variable "ec2_subnet_id" {
   default     = null
 }
 
-variable "dtrack_ebs_root_volume_size" {
+variable "dtrack_ebs_root_size" {
   description = "Size of the root EBS volume in GB."
   type        = number
 
   validation {
-    condition     = var.dtrack_ebs_root_volume_size >= 8 && var.dtrack_ebs_root_volume_size <= 64
+    condition     = var.dtrack_ebs_root_size >= 8 && var.dtrack_ebs_root_size <= 64
     error_message = "Root volume size must be between 8 and 64 GB."
   }
 }
 
-variable "dtrack_ebs_data_volume_size" {
+variable "dtrack_ebs_data_size" {
   description = "Size of the data EBS volume in GB."
   type        = number
 
   validation {
-    condition     = var.dtrack_ebs_data_volume_size >= 10 && var.dtrack_ebs_data_volume_size <= 128
+    condition     = var.dtrack_ebs_data_size >= 10 && var.dtrack_ebs_data_size <= 128
     error_message = "Data volume size must be between 10 and 128 GB."
   }
+}
+
+variable "dtrack_ebs_data_throughput" {
+  description = "The data EBS volume throughput in MiB/s."
+  type        = number
+  default     = 125
+}
+
+variable "dtrack_ebs_data_snapshot_id" {
+  description = "Snapshot ID to use for the data EBS volume."
+  type        = string
+  default     = null
 }
 
 variable "dtrack_name" {
@@ -80,86 +87,56 @@ variable "dtrack_name" {
   }
 }
 
-variable "dtrack_sg_ingress_cidr_blocks" {
+variable "dtrack_security_group_ingress_cidr_blocks" {
   description = "List of IPv4 CIDR blocks allowed for ingress, e.g., `0.0.0.0/0` refers to the entire IPv4 address space."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  # default     = []
 
-  validation {
-    condition     = alltrue([for cidr in var.dtrack_sg_ingress_cidr_blocks : can(regex("^(\\d{1,3}\\.){3}\\d{1,3}/\\d{1,2}$", cidr))])
-    error_message = "Each CIDR block must be a valid IPv4 CIDR (e.g., '0.0.0.0/0')."
-  }
+  # validation {
+  #   condition     = alltrue([for cidr in var.dtrack_security_group_ingress_cidr_blocks : can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"])
+  #   error_message = "Public IPv4 ingress (0.0.0.0/0) is not permitted by default."
+  # }
+  default = ["0.0.0.0/0"]
 }
 
-variable "dtrack_sg_ingress_ipv6_cidr_blocks" {
+variable "dtrack_security_group_ingress_ipv6_cidr_blocks" {
   description = "List of IPv6 CIDR blocks allowed for ingress, e.g., `::/0` refers to the entire IPv6 address space."
   type        = list(string)
-  default     = ["::/0"]
+  # default     = []
 
-  # XXX Modify IPv6 CIDR regex pattern
   # validation {
-  #   condition     = alltrue([for cidr in var.dtrack_sg_ingress_ipv6_cidr_blocks : can(regex("^([a-fA-F0-9:]+:+)+[a-fA-F0-9]+/[0-9]{1,3}$", cidr))])
-  #   error_message = "Each CIDR block must be a valid IPv6 CIDR (e.g., '::/0')."
+  #   condition = alltrue([
+  #     for cidr in var.dtrack_security_group_ingress_ipv6_cidr_blocks :
+  #     can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
+  #   ])
+  #   error_message = "Each IPv6 entry must be a valid CIDR (prefix 0-128) and not be ::/0 by default."
   # }
+  default = ["::/0"]
 }
 
-variable "dtrack_sg_ingress_rules" {
+variable "dtrack_security_group_ingress_rules" {
   description = "List of ingress rules for the security group."
   type        = list(string)
-  default     = ["http-80-tcp", "https-443-tcp", "ssh-tcp", "all-icmp"]
+  # default     = ["https-443-tcp", "ssh-tcp", "all-icmp"]
 
-  validation {
-    condition     = length(var.dtrack_sg_ingress_rules) > 0
-    error_message = "At least one ingress rule must be specified."
-  }
+  # validation {
+  #   condition     = length(var.dtrack_security_group_ingress_rules) > 0
+  #   error_message = "At least one ingress rule must be specified."
+  # }
+  default = ["http-80-tcp", "https-443-tcp", "ssh-tcp", "all-icmp"]
 }
 
-variable "dtrack_sg_egress_rules" {
+variable "dtrack_security_group_egress_rules" {
   description = "List of egress rules for the security group."
   type        = list(string)
-  default     = ["all-all"]
+  # default     = ["https-443-tcp"]
 
-  validation {
-    condition     = length(var.dtrack_sg_egress_rules) > 0
-    error_message = "At least one egress rule must be specified."
-  }
+  # validation {
+  #   condition     = length(var.dtrack_security_group_egress_rules) > 0
+  #   error_message = "At least one egress rule must be specified."
+  # }
+  default = ["all-all"]
 }
-
-# NOTE Comment in for custome ingress rules
-# variable "dtrack_sg_ingress_with_cidr_blocks" {
-#   description = "List of ingress rules with specific CIDR blocks."
-#   type = list(object({
-#     cidr_blocks = string
-#     from_port   = number
-#     to_port     = number
-#     protocol    = string
-#     description = string
-#   }))
-#   default = [
-#     {
-#       cidr_blocks = "0.0.0.0/0"
-#       from_port   = 8080
-#       to_port     = 8080
-#       protocol    = "tcp"
-#       description = "Inbound traffic for dtrack-frontend on port 8080."
-#     },
-#     {
-#       cidr_blocks = "0.0.0.0/0"
-#       from_port   = 8081
-#       to_port     = 8081
-#       protocol    = "tcp"
-#       description = "Inbound traffic for dtrack-apiserver on port 8081."
-#     }
-#   ]
-
-#   validation {
-#     condition = alltrue([
-#       for rule in var.dtrack_sg_ingress_with_cidr_blocks :
-#       rule.from_port <= rule.to_port && rule.from_port >= 1024 && rule.to_port <= 65535
-#     ])
-#     error_message = "Ingress rules must use unprivileged ports (1024-65535) for both 'from_port' and 'to_port'."
-#   }
-# }
 
 variable "dtrack_eip_create" {
   description = "Specifies whether a public EIP will be created and associated with the instance."

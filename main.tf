@@ -19,17 +19,17 @@ module "component_analysis" {
   ec2_subnet_id     = data.aws_subnet.existing_private_az2.id
 
   # Security Group
-  sg_ingress_cidr_blocks      = var.dtrack_sg_ingress_cidr_blocks
-  sg_ingress_ipv6_cidr_blocks = var.dtrack_sg_ingress_ipv6_cidr_blocks
-  sg_ingress_rules            = var.dtrack_sg_ingress_rules
-  sg_egress_rules             = var.dtrack_sg_egress_rules
-  # NOTE Comment in for custome ingress rules
-  # sg_ingress_with_cidr_blocks = var.dtrack_sg_ingress_with_cidr_blocks
+  security_group_ingress_cidr_blocks      = var.dtrack_security_group_ingress_cidr_blocks
+  security_group_ingress_ipv6_cidr_blocks = var.dtrack_security_group_ingress_ipv6_cidr_blocks
+  security_group_ingress_rules            = var.dtrack_security_group_ingress_rules
+  security_group_egress_rules             = var.dtrack_security_group_egress_rules
 
   # EBS Volume
   ebs_data_create      = var.dtrack_ebs_data_create
-  ebs_root_volume_size = var.dtrack_ebs_root_volume_size
-  ebs_data_volume_size = var.dtrack_ebs_data_volume_size
+  ebs_root_size        = var.dtrack_ebs_root_size
+  ebs_data_size        = var.dtrack_ebs_data_size
+  ebs_data_throughput  = var.dtrack_ebs_data_throughput
+  ebs_data_snapshot_id = var.dtrack_ebs_data_snapshot_id
 
   # EIP
   eip_create = var.dtrack_eip_create

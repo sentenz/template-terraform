@@ -49,10 +49,10 @@ function pkg_apt_install() {
   fi
 
   if util_string_exist "${version}"; then
-    apt install "${package}"="${version}" -qqq -y --no-install-recommends
+    apt install "${package}"="${version}" -qqq -y --no-install-recommends >/dev/null 2>&1
     ((retval = $?))
   else
-    apt install "${package}" -qqq -y --no-install-recommends
+    apt install "${package}" -qqq -y --no-install-recommends >/dev/null 2>&1
     ((retval = $?))
   fi
 
@@ -75,7 +75,7 @@ function pkg_apt_uninstall() {
     return 0
   fi
 
-  apt remove -y -qqq "${package}"
+  apt remove -y -qqq "${package}" >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -88,7 +88,7 @@ function pkg_apt_uninstall() {
 # Returns:
 #   None
 function pkg_apt_update() {
-  apt update -qqq &>/dev/null
+  apt update -qqq >/dev/null 2>&1
 }
 
 # Cleanup apt package dependencies.
@@ -100,16 +100,16 @@ function pkg_apt_update() {
 function pkg_apt_clean() {
   local -i retval=0
 
-  apt -f install -y -qqq
+  apt -f install -y -qqq >/dev/null 2>&1
   ((retval |= $?))
 
-  apt autoremove -y -qqq
+  apt autoremove -y -qqq >/dev/null 2>&1
   ((retval |= $?))
 
-  apt clean -qqq
+  apt clean -qqq >/dev/null 2>&1
   ((retval |= $?))
 
-  rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+  rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* >/dev/null 2>&1
   ((retval |= $?))
 
   log_message "clean" "apt" "${retval}"
@@ -171,10 +171,10 @@ function pkg_apk_install() {
   fi
 
   if util_string_exist "${version}"; then
-    apk add "${package}=${version}" --quiet --no-cache
+    apk add "${package}=${version}" --quiet --no-cache >/dev/null 2>&1
     ((retval = $?))
   else
-    apk add "${package}" --quiet --no-cache
+    apk add "${package}" --quiet --no-cache >/dev/null 2>&1
     ((retval = $?))
   fi
 
@@ -197,7 +197,7 @@ function pkg_apk_uninstall() {
     return 0
   fi
 
-  apk del --quiet "${package}"
+  apk del --quiet "${package}" >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -210,7 +210,7 @@ function pkg_apk_uninstall() {
 # Returns:
 #   None
 function pkg_apk_update() {
-  apk update --quiet &>/dev/null
+  apk update --quiet >/dev/null 2>&1
 }
 
 # Cleanup apk package dependencies.
@@ -222,13 +222,13 @@ function pkg_apk_update() {
 function pkg_apk_clean() {
   local -i retval=0
 
-  apk fix --quiet
+  apk fix --quiet >/dev/null 2>&1
   ((retval |= $?))
 
-  apk cache clean --quiet
+  apk cache clean --quiet >/dev/null 2>&1
   ((retval |= $?))
 
-  rm -rf /var/cache/apk/*
+  rm -rf /var/cache/apk/* >/dev/null 2>&1
   ((retval |= $?))
 
   log_message "clean" "apk" "${retval}"
@@ -285,7 +285,7 @@ function pkg_pip_install() {
   local -i retval=0
 
   # Check if package is already installed (any version)
-  if pipx list | grep -qE "^package ${package} "; then
+  if pipx -q list | grep -qE "^package ${package} " &>/dev/null; then
     return 0
   fi
 
@@ -331,11 +331,11 @@ function pkg_pip_uninstall() {
   local -i retval=0
 
   # Check if package is installed (any version)
-  if ! pipx list | grep -qE "^package ${package} "; then
+  if ! pipx -q list | grep -qE "^package ${package} " &>/dev/null; then
     return 0
   fi
 
-  pipx -q uninstall -q "${package}" --yes
+  pipx -q uninstall -q "${package}" >/dev/null 2>&1
   ((retval |= $?))
 
   return "${retval}"
@@ -367,7 +367,7 @@ function pkg_pip_uninstall_list() {
 function pkg_pip_clean() {
   local -i retval=0
 
-  pip3 cache purge -q
+  pip3 cache purge -q >/dev/null 2>&1
   ((retval |= $?))
 
   log_message "clean" "pip" "${retval}"
@@ -394,10 +394,10 @@ function pkg_snap_install() {
   fi
 
   if util_string_exist "${version}"; then
-    snap install "${package}" --channel="${version}/stable" --classic &>/dev/null
+    snap install "${package}" --channel="${version}/stable" --classic >/dev/null 2>&1
     ((retval = $?))
   else
-    snap install --stable "${package}" --classic &>/dev/null
+    snap install --stable "${package}" --classic >/dev/null 2>&1
     ((retval = $?))
   fi
 
@@ -452,7 +452,7 @@ function pkg_snap_uninstall() {
     return 0
   fi
 
-  snap remove "${package}" &>/dev/null
+  snap remove "${package}" >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -493,7 +493,7 @@ function pkg_npm_install() {
     return 0
   fi
 
-  npm install "${package}@${version:-latest}" --silent -g
+  npm install "${package}@${version:-latest}" --silent -g >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -532,7 +532,7 @@ function pkg_npm_uninstall() {
     return 0
   fi
 
-  npm uninstall "${package}" --silent -g
+  npm uninstall "${package}" --silent -g >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -564,7 +564,7 @@ function pkg_npm_uninstall_list() {
 function pkg_npm_clean() {
   local -i retval=0
 
-  npm cache clean --force --silent
+  npm cache clean --force --silent >/dev/null 2>&1
   ((retval = $?))
 
   log_message "clean" "npm" "${retval}"
@@ -592,7 +592,7 @@ function pkg_go_install() {
     return 0
   fi
 
-  go install "${package}"@"${version:-latest}"
+  go install "${package}"@"${version:-latest}" >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -639,7 +639,7 @@ function pkg_go_uninstall() {
     return 0
   fi
 
-  rm -f -- "${package_path}"
+  rm -f -- "${package_path}" >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"
@@ -672,11 +672,11 @@ function pkg_go_clean() {
   local -i retval=0
 
   # Cleans build cache
-  go clean -cache
+  go clean -cache >/dev/null 2>&1
   ((retval |= $?))
 
   # Cleans downloaded module dependencies
-  go clean -modcache
+  go clean -modcache >/dev/null 2>&1
   ((retval |= $?))
 
   log_message "clean" "go" "${retval}"
@@ -708,7 +708,7 @@ function pkg_wget_download() {
     return 0
   fi
 
-  wget -q "$url" -O "$dest"
+  wget -q "$url" -O "$dest" >/dev/null 2>&1
   ((retval = $?))
 
   return "${retval}"

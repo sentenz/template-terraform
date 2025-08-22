@@ -28,6 +28,17 @@ variable "key_path" {
   type        = string
   sensitive   = true
   default     = null
+
+  validation {
+    condition = (
+      var.key_pair_create == false
+      || (
+        try(length(var.key_path) > 0, false)
+        && can(regex("^.*\\.pub$", var.key_path))
+      )
+    )
+    error_message = "When key_pair_create is true, key_path must be provided and end with '.pub'."
+  }
 }
 
 variable "vpc_create" {
@@ -126,37 +137,50 @@ variable "azs_state" {
   default     = "available"
 }
 
-variable "sg_description" {
+variable "security_group_description" {
   description = "The description of the security group."
   type        = string
   default     = "Security group for AWS EC2 Module."
 }
 
-variable "sg_ingress_cidr_blocks" {
+variable "security_group_ingress_cidr_blocks" {
   description = "List of IPv4 CIDR blocks allowed for ingress, restricted to trusted IPs."
   type        = list(string)
-  default     = ["10.0.0.0/16"]
+  # default     = []
+
+  # validation {
+  #   condition     = alltrue([for c in var.security_group_ingress_cidr_blocks : c != "0.0.0.0/0"])
+  #   error_message = "Public IPv4 ingress (0.0.0.0/0) is not allowed by default."
+  # }
+  default = ["10.0.0.0/16"]
 }
 
-variable "sg_ingress_ipv6_cidr_blocks" {
+variable "security_group_ingress_ipv6_cidr_blocks" {
   description = "List of IPv6 CIDR blocks allowed for ingress, restricted to trusted IPv6 ranges."
   type        = list(string)
-  default     = []
+  # default     = []
+
+  # validation {
+  #   condition     = alltrue([for c in var.security_group_ingress_ipv6_cidr_blocks : c != "::/0"])
+  #   error_message = "Public IPv6 ingress (::/0) is not allowed by default."
+  # }
+  default = ["https-443-tcp"]
 }
 
-variable "sg_ingress_rules" {
+variable "security_group_ingress_rules" {
   description = "List of ingress rules for the security group for Least Privilege."
   type        = list(string)
-  default     = ["https-443-tcp"]
+  # default     = []
+  default = ["https-443-tcp"]
 }
 
-variable "sg_egress_rules" {
+variable "security_group_egress_rules" {
   description = "List of egress rules for the security group for Least Privilege."
   type        = list(string)
   default     = ["https-443-tcp"]
 }
 
-variable "sg_ingress_with_cidr_blocks" {
+variable "security_group_ingress_with_cidr_blocks" {
   description = "List of ingress rules with specific CIDR blocks, restricted to trusted IPs."
   type = list(object({
     cidr_blocks = string
@@ -165,6 +189,15 @@ variable "sg_ingress_with_cidr_blocks" {
     protocol    = string
     description = string
   }))
+  # default = []
+
+  # validation {
+  #   condition = alltrue([
+  #     for r in var.security_group_ingress_with_cidr_blocks :
+  #     r.cidr_blocks != "0.0.0.0/0" && r.cidr_blocks != "::/0"
+  #   ])
+  #   error_message = "Public ingress tuples (0.0.0.0/0 or ::/0) are not allowed by default."
+  # }
   default = [
     {
       cidr_blocks = "10.0.0.0/16"
@@ -206,6 +239,18 @@ variable "eip_create" {
   default     = false
 }
 
+variable "ebs_enable_volume_tags" {
+  description = "Whether to enable volume tags (if enabled it conflicts with `root_block_device` tags)."
+  type        = bool
+  default     = false
+}
+
+variable "ebs_optimized" {
+  description = "Whether the EC2 instance should be EBS-optimized."
+  type        = bool
+  default     = false
+}
+
 variable "ebs_root_encrypted" {
   description = "Specifies whether the root EBS volume will be encrypted."
   type        = bool
@@ -218,22 +263,22 @@ variable "ebs_root_throughput" {
   default     = 200
 }
 
-variable "ebs_root_volume_type" {
+variable "ebs_root_iops" {
+  description = "The root EBS volume IOPS (Input/Output Operations Per Second)."
+  type        = number
+  default     = 3000
+}
+
+variable "ebs_root_type" {
   description = "Type of the root EBS volume."
   type        = string
   default     = "gp3"
 }
 
-variable "ebs_root_volume_size" {
+variable "ebs_root_size" {
   description = "Size of the root EBS volume in GB."
   type        = number
   default     = 50
-}
-
-variable "ebs_root_enable_tags" {
-  description = "Whether to enable tags for the root EBS volume."
-  type        = bool
-  default     = false
 }
 
 variable "ebs_data_create" {
@@ -254,20 +299,33 @@ variable "ebs_data_throughput" {
   default     = 200
 }
 
-variable "ebs_data_volume_type" {
+variable "ebs_data_iops" {
+  description = "The data EBS volume IOPS (Input/Output Operations Per Second)."
+  type        = number
+  default     = 3000
+}
+
+variable "ebs_data_type" {
   description = "Type of the data EBS volume."
   type        = string
   default     = "gp3"
 }
 
-variable "ebs_data_volume_size" {
+variable "ebs_data_size" {
   description = "Size of the data EBS volume in GB."
   type        = number
   default     = 50
 }
 
 variable "ebs_data_device_name" {
-  description = "The device name for the additional EBS volume attachment."
+  description = "Logical device name for the data EBS volume attachment, the names `/dev/sd[f-p]` map to NVMe `/dev/nvme*n*` device nodes. NOTE Do not use root names `/dev/sda`, `/dev/sda1`."
   type        = string
-  default     = "/dev/sdh"
+  default     = "/dev/sdf"
+}
+
+variable "ebs_data_snapshot_id" {
+  description = "Snapshot ID to use for the data EBS volume."
+  type        = string
+  default     = null
+
 }

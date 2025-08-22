@@ -32,7 +32,7 @@ variable "tags" {
 variable "key_pair_create" {
   description = "Whether to create a new SSH key pair for EC2 access."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "key_path" {
@@ -53,14 +53,26 @@ variable "dtrack_ec2_instance_type" {
   default     = "t3.xlarge"
 }
 
-variable "dtrack_ebs_root_volume_size" {
+variable "dtrack_ebs_root_size" {
   description = "Size of the root EBS volume in GB."
   type        = number
   default     = 30
 }
 
-variable "dtrack_ebs_data_volume_size" {
+variable "dtrack_ebs_data_size" {
   description = "Size of the data EBS volume in GB."
   type        = number
   default     = 30
+}
+
+variable "dtrack_ebs_data_throughput" {
+  description = "The data EBS volume throughput in MiB/s."
+  type        = number
+  default     = 200
+}
+
+variable "dtrack_ebs_data_snapshot_id" {
+  description = "Snapshot ID to use for the data EBS volume."
+  type        = string
+  default     = null
 }

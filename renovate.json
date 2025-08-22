@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "description": "Includes updates that introduce breaking changes or require code adjustments due to changes in public APIs.",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "major versions",
+      "groupSlug": "major-versions",
+      "automerge": false
+    },
+    {
+      "description": "Includes backward-compatible functionality improvements and feature additions.",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "groupName": "minor versions",
+      "groupSlug": "minor-versions",
+      "automerge": false
+    },
+    {
+      "description": "Includes backward-compatible bug fixes and small corrections.",
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "groupName": "patch versions",
+      "groupSlug": "patch-versions",
+      "automerge": false
+    }
+  ]
+}

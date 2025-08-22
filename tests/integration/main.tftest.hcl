@@ -1,8 +1,8 @@
 # Test Fixtures
 variables {
-  instance_type    = "t2.micro"
-  root_volume_size = 10
-  data_volume_size = 20
+  instance_type = "t2.micro"
+  ebs_root_size = 10
+  ebs_data_size = 20
   tags = {
     Name        = "Component Analysis"
     Terraform   = "true"
@@ -16,10 +16,10 @@ run "create_module_dtrack" {
 
   # Arrange
   variables {
-    dtrack_ec2_instance_type    = var.instance_type
-    dtrack_ebs_root_volume_size = var.root_volume_size
-    dtrack_ebs_data_volume_size = var.data_volume_size
-    tags                        = var.tags
+    dtrack_ec2_instance_type = var.instance_type
+    dtrack_ebs_root_size     = var.ebs_root_size
+    dtrack_ebs_data_size     = var.ebs_data_size
+    tags                     = var.tags
   }
 
   # Assert

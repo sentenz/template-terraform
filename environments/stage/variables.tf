@@ -53,14 +53,26 @@ variable "dtrack_ec2_instance_type" {
   default     = "t3.large"
 }
 
-variable "dtrack_ebs_root_volume_size" {
+variable "dtrack_ebs_root_size" {
   description = "Size of the root EBS volume in GB."
   type        = number
   default     = 10
 }
 
-variable "dtrack_ebs_data_volume_size" {
+variable "dtrack_ebs_data_size" {
   description = "Size of the data EBS volume in GB."
   type        = number
   default     = 10
+}
+
+variable "dtrack_ebs_data_throughput" {
+  description = "The data EBS volume throughput in MiB/s."
+  type        = number
+  default     = 125
+}
+
+variable "dtrack_ebs_data_snapshot_id" {
+  description = "Snapshot ID to use for the data EBS volume."
+  type        = string
+  default     = "snap-06dfc45b54fc824b2"
 }

@@ -1,14 +1,22 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
+  "rebaseWhen": "behind-base-branch",
+  "dependencyDashboard": false,
   "labels": [
     "dependencies"
   ],
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ],
+    "automerge": false
+  },
   "packageRules": [
     {
-      "description": "Includes updates that introduce breaking changes or require code adjustments due to changes in public APIs.",
+      "description": "Introduces breaking changes or require code adjustments due to changes in public APIs.",
       "matchUpdateTypes": [
         "major"
       ],
@@ -17,7 +25,7 @@
       "automerge": false
     },
     {
-      "description": "Includes backward-compatible functionality improvements and feature additions.",
+      "description": "Introduces backward-compatible functionality improvements and feature additions.",
       "matchUpdateTypes": [
         "minor"
       ],
@@ -26,13 +34,32 @@
       "automerge": false
     },
     {
-      "description": "Includes backward-compatible bug fixes and small corrections.",
+      "description": "Introduces backward-compatible bug fixes and small corrections.",
       "matchUpdateTypes": [
         "patch"
       ],
       "groupName": "patch versions",
       "groupSlug": "patch-versions",
       "automerge": false
+    },
+    {
+      "description": "Docker base image digest bumps (pinned).",
+      "matchManagers": [
+        "dockerfile",
+        "containerfile"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "groupName": "docker digest updates",
+      "groupSlug": "docker-digests",
+      "automerge": false
     }
-  ]
+  ],
+  "pre-commit": {
+    "enabled": true
+  }
 }

@@ -2,51 +2,42 @@
 
 A Terraform module collection to provision infrastructure for deploying on AWS.
 
-- [1. Usage](#1-usage)
-  - [1.1. Details](#11-details)
-  - [1.2. Modules](#12-modules)
-  - [1.3. Identity and Access](#13-identity-and-access)
-    - [1.3.1. AWS Administrator Access](#131-aws-administrator-access)
-    - [1.3.2. SSH Connection](#132-ssh-connection)
-  - [1.4. Task Runner](#14-task-runner)
-  - [1.5. Troubleshoot](#15-troubleshoot)
-- [2. Requirements](#2-requirements)
-- [3. Providers](#3-providers)
-- [4. Modules](#4-modules)
-- [5. Resources](#5-resources)
-- [6. Inputs](#6-inputs)
-- [7. Outputs](#7-outputs)
+- [1. Details](#1-details)
+  - [1.1. Modules](#11-modules)
+- [2. Usage](#2-usage)
+  - [2.1. Authentication](#21-authentication)
+    - [2.1.1. AWS Administrator Access](#211-aws-administrator-access)
+    - [2.1.2. SSH Key Pair](#212-ssh-key-pair)
+  - [2.2. Secret Manager](#22-secret-manager)
+    - [2.2.1. SOPS](#221-sops)
+  - [2.3. Task Runner](#23-task-runner)
+    - [2.3.1. Makefile](#231-makefile)
+- [3. Troubleshoot](#3-troubleshoot)
+  - [3.1. Snapshot](#31-snapshot)
+    - [3.1.1. Restore Snapshot](#311-restore-snapshot)
+  - [3.2. Inspect Drifts](#32-inspect-drifts)
+  - [3.3. Extend Volume](#33-extend-volume)
+  - [3.4. State Migration](#34-state-migration)
+- [4. References](#4-references)
 
-## 1. Usage
+## 1. Details
 
-### 1.1. Details
+### 1.1. Modules
 
-1. Module Sources using Local Paths
+> [!NOTE]
+> Module Source using `Local Path`
 
-    - `modules/aws-ec2`
-      > AWS EC2 module focuses on setting up network infrastructure (VPC) and EC2 instances. The module handles a complete stack, including instances, VPC, key pairs, and security groups.
+- `modules/aws-ec2`
+  > AWS EC2 module focuses on setting up network infrastructure (VPC) and EC2 instances. The module provisions a complete stack, including instances, VPC, key pairs, and security groups.
 
-### 1.2. Modules
+- `modules/aws-eks`
+  > AWS EKS module provisions a managed Kubernetes cluster on AWS Elastic Kubernetes Service. It configures the control plane, worker node groups, IAM roles, and associated networking resources. The module integrates with supporting components such as VPC, subnets, and security groups, enabling a production-ready Kubernetes environment.
 
-- Dependency-Track
-  > [OWAS Dependency-Track](https://docs.dependencytrack.org/) is an intelligent Component Analysis platform to identify and reduce risk in the software supply chain. Dependency-Track leverages the capabilities of the Software Bill of Materials (SBOM) for Software Composition Analysis (SCA) solutions.
+## 2. Usage
 
-  ```hcl
-  module "component_analysis" {
-    source = "./modules/aws-ec2"
+### 2.1. Authentication
 
-    # AWS configuration
-    name       = var.dtrack_name
-    region     = var.region
-    key_path   = var.key_path
-
-    tags = var.tags
-  }
-  ```
-
-### 1.3. Identity and Access
-
-#### 1.3.1. AWS Administrator Access
+#### 2.1.1. AWS Administrator Access
 
 AWS Administrator Access requires secure management of credentials. It is essential that sensitive information is protected, and that multiple access profiles are maintained in the local [AWS credentials file](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
 
@@ -65,10 +56,10 @@ AWS Administrator Access requires secure management of credentials. It is essent
       aws_secret_access_key = <YOUR_SECRET_KEY>
       aws_session_token = <YOUR_SESSION_TOKEN>
 
-      [dev]
-      aws_access_key_id = <DEV_ACCESS_KEY>
-      aws_secret_access_key = <DEV_SECRET_KEY>
-      aws_session_token = <DEV_SESSION_TOKEN>
+      [stage]
+      aws_access_key_id = <STAGE_ACCESS_KEY>
+      aws_secret_access_key = STAGE_SECRET_KEY>
+      aws_session_token = <STAGE_SESSION_TOKEN>
 
       [prod]
       aws_access_key_id = <PROD_ACCESS_KEY>
@@ -93,12 +84,12 @@ AWS Administrator Access requires secure management of credentials. It is essent
       > [!IMPORTANT]
       > If the root directory has a `provider.tf`, delete it to avoid inheritance conflicts. Terraform modules inherit providers from the root by default, but environment-specific directories should manage their own providers.
 
-      - `environments/dev/provider.tf`
+      - `environments/stage/provider.tf`
 
         ```hcl
         provider "aws" {
           region  = var.region
-          profile = "dev"
+          profile = "stage"
         }
         ```
 
@@ -111,7 +102,7 @@ AWS Administrator Access requires secure management of credentials. It is essent
         }
         ```
 
-#### 1.3.2. SSH Connection
+#### 2.1.2. SSH Key Pair
 
 SSH (Secure Shell) is used to securely access AWS instances to perform automatized tasks, such as software installation via Ansible or for maintenance purpose.
 
@@ -157,10 +148,10 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
     - `~/.ssh/config`
 
       ```plaintext
-      Host aws-dev                       # Friendly name for the connection
+      Host aws-stage                     # Friendly name for the connection
         User         ec2-user            # Default user for Amazon Linux
         HostName     <PUBLIC_IP_OR_DNS>  # EC2 instance public IP/DNS after deployment
-        IdentityFile ~/.ssh/aws-dev      # Path to private key
+        IdentityFile ~/.ssh/aws-stage    # Path to private key
         Port         22                  # Optional: Specify the SSH port if not default (22)
         StrictHostKeyChecking no         # Optional: Disable host key prompts
 
@@ -186,15 +177,15 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
         }
         ```
 
-    - For multi-environment organize `variables.tf` to separate dev/prod environments.
+    - For multi-environment organize `variables.tf` to separate `stage` and `prod` environments.
 
-      - `environments/dev/variables.tf`
+      - `environments/stage/variables.tf`
 
         ```hcl
         variable "key_path" {
           description = "Path to the public key for SSH access."
           type        = string
-          default     = "~/.ssh/aws-dev.pub"
+          default     = "~/.ssh/aws-stage.pub"
         }
         ```
 
@@ -208,13 +199,59 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
         }
         ```
 
-### 1.4. Task Runner
+### 2.2. Secret Manager
+
+#### 2.2.1. SOPS
+
+1. GPG Key Pair Generation
+
+    - Task Runner
+      > Generate a new key pair to be used with SOPS.
+
+      > [!NOTE]
+      > The UID can be customized via the `SOPS_UID` variable (defaults to `sops-dx`).
+
+      ```sh
+      make secret-gpg-generate SOPS_UID=<uid>
+      ```
+
+2. GPG Public Key Fingerprint
+
+    - Task Runner
+      > Print the  GPG Public Key fingerprint associated with a given UID.
+
+      ```sh
+      make secret-gpg-show SOPS_UID=<uid>
+      ```
+
+    - [.sops.yaml](.sops.yaml)
+      > The GPG UID is required for populating in `.sops.yaml`.
+
+      ```yaml
+      creation_rules:
+        - pgp: "<fingerprint>" # <uid>
+      ```
+
+3. SOPS Encrypt/Decrypt
+
+    - Task Runner
+      > Encrypt/decrypt one or more files in place using SOPS.
+
+      ```sh
+      make secret-sops-encrypt <files>
+      make secret-sops-decrypt <files>
+      ```
+
+### 2.3. Task Runner
+
+#### 2.3.1. Makefile
 
 - [Makefile](Makefile)
-  > Refer to the Makefile as the Task Runner file.
+  > The Makefile serves as the task runner.
 
   > [!NOTE]
-  > Run the `make help` command in the terminal to list the tasks used in the current project.
+  > - Run the `make help` command in the terminal to list the tasks used for the project.
+  > - Targets **must** have a leading comment line starting with `##` to be included in the task list.
 
   ```plaintext
   $ make help
@@ -233,80 +270,136 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
           tf-infra-destroy            Destroy Infrastructure for Target Environment
   ```
 
-### 1.5. Troubleshoot
+## 3. Troubleshoot
+
+### 3.1. Snapshot
+
+#### 3.1.1. Restore Snapshot
+
+Restore an EBS volume from an [EBS snapshot](https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/restore.html#restore-snapshot).
+
+> [!NOTE]
+> Ensure the snapshot is in the same region as the AWS EC2 instance. The restored volume must have the same size and data as the snapshot.
+
+1. Identify Snapshot ID
+
+    Find the ID of the snapshot to restore from.
+
+    - AWS Management Console
+      > Navigate to `EC2 > Snapshots` to locate the desired snapshot ID (e.g., `snap-xxxxxxxxxxxxxxxxx`).
+
+    - AWS CLI
+      > Run the the command to list snapshots owned by the account based the assigned role.
+
+      ```bash
+      aws ec2 describe-snapshots --owner-ids self
+      ```
+
+2. Terraform Resources
+
+    Configure the `ebs_data_snapshot_id` variable to the desired **Snapshot ID**.
+
+    - `variables.tf`
+      > Define the Snapshot ID variable in variables.tf with the identified snapshot ID.
+
+      ```hcl
+      variable "ebs_data_snapshot_id" {
+        description = "Snapshot ID to use for the data EBS volume."
+        type        = string
+        default     = "snap-xxxxxxxxxxxxxxxxx"
+      }
+      ```
+
+3. Terraform Deployment
+
+    Create a new EBS volume from the snapshot and attach it to the EC2 instance.
+
+    - Terraform CLI
+      > Run the standard Terraform workflow to apply the new configuration.
+
+      ```bash
+      terraform plan
+      terraform apply
+      ```
+
+> [!TIP]
+> If required, access after Terraform applies the changes the EC2 instance via SSH.
+>
+> - Verification of the new device (e.g., `/dev/sdf`) recognition can be done using commands like `lsblk`.
+> - Reboot the EC2 instance after attaching the restored volume is initialized to ensure the device is properly recognized and mounted.
+
+### 3.2. Inspect Drifts
 
 Inspect the mappings of the instances to triage current state.
 
-1. Example and Explanation
+- Device Name Collision in EBS Volume
+  > In Terraform, ensure each attachment has a unique `device_name` across all modules/instances. If a prior failed run left a pending attachment, detach or change the device name before re-applying.
 
-    - Device Name Collision of an EBS Volume
-      > In Terraform, ensure each attachment has a unique `device_name` across all modules/instances. If a prior failed run left a pending attachment, detach or change the device name before re-applying.
+  ```bash
+  AWS_PROFILE=stage aws --region eu-central-1 ec2 describe-instances \
+    --instance-ids i-09fde7f2773e81450 \
+    --query 'Reservations[].Instances[].BlockDeviceMappings[].{DeviceName:DeviceName,VolumeId:Ebs.VolumeId}'
+  ```
 
-      ```bash
-      AWS_PROFILE=stage aws --region eu-central-1 ec2 describe-instances \
-        --instance-ids i-09fde7f2773e81450 \
-        --query 'Reservations[].Instances[].BlockDeviceMappings[].{DeviceName:DeviceName,VolumeId:Ebs.VolumeId}'
-      ```
+### 3.3. Extend Volume
 
-<!-- BEGIN_TF_DOCS -->
-## 2. Requirements
+- [Extend File System](https://docs.aws.amazon.com/ebs/latest/userguide/recognize-expanded-volume-linux.html)
+  > After increasing the size of an EBS volume, extend the partition and filesystem to use the additional capacity.
 
-| Name                                                                      | Version  |
-| ------------------------------------------------------------------------- | -------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.7.0 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws)                   | >= 6.0   |
-| <a name="requirement_tls"></a> [tls](#requirement\_tls)                   | >= 4.0   |
+  > [!TIP]
+  > Perform the file system extension as soon as the volume enters the **optimizing** state.
 
-## 3. Providers
+### 3.4. State Migration
 
-| Name                                              | Version |
-| ------------------------------------------------- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.9.0   |
+When a module or resource path is refactored but the actual infrastructure remains the same, migrate the Terraform state to the new addresses instead of recreating resources.
 
-## 4. Modules
+1. Backup State
 
-| Name                                                                                         | Source            | Version |
-| -------------------------------------------------------------------------------------------- | ----------------- | ------- |
-| <a name="module_component_analysis"></a> [component\_analysis](#module\_component\_analysis) | ./modules/aws-ec2 | n/a     |
+    Backup the state file in the environment directory before any changes.
 
-## 5. Resources
+    ```bash
+    cd environments/<env>/<component>
+    cp terraform.tfstate terraform.tfstate.backup.$(date +%s)
+    ```
 
-| Name                                                                                                                     | Type        |
-| ------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| [aws_subnet.existing_private_az1](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) | data source |
-| [aws_subnet.existing_private_az2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) | data source |
-| [aws_subnet.existing_public_az1](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet)  | data source |
-| [aws_subnet.existing_public_az2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet)  | data source |
-| [aws_vpc.existing](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/vpc)                   | data source |
+2. Inspect State
 
-## 6. Inputs
+    Inspect current state addresses to determine the exact source addresses to move.
 
-| Name                                                                                                                                                                                     | Description                                                                                              | Type           | Default                                                                                          | Required |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ | :------: |
-| <a name="input_dtrack_ebs_data_create"></a> [dtrack\_ebs\_data\_create](#input\_dtrack\_ebs\_data\_create)                                                                               | Whether to create and attach a data EBS volume.                                                          | `bool`         | `true`                                                                                           |    no    |
-| <a name="input_dtrack_ebs_data_size"></a> [dtrack\_ebs\_data\_size](#input\_dtrack\_ebs\_data\_size)                                                                                     | Size of the data EBS volume in GB.                                                                       | `number`       | n/a                                                                                              |   yes    |
-| <a name="input_dtrack_ebs_data_snapshot_id"></a> [dtrack\_ebs\_data\_snapshot\_id](#input\_dtrack\_ebs\_data\_snapshot\_id)                                                              | Snapshot ID to use for the data EBS volume.                                                              | `string`       | `null`                                                                                           |    no    |
-| <a name="input_dtrack_ebs_data_throughput"></a> [dtrack\_ebs\_data\_throughput](#input\_dtrack\_ebs\_data\_throughput)                                                                   | The data EBS volume throughput in MiB/s.                                                                 | `number`       | `125`                                                                                            |    no    |
-| <a name="input_dtrack_ebs_root_size"></a> [dtrack\_ebs\_root\_size](#input\_dtrack\_ebs\_root\_size)                                                                                     | Size of the root EBS volume in GB.                                                                       | `number`       | n/a                                                                                              |   yes    |
-| <a name="input_dtrack_ec2_instance_type"></a> [dtrack\_ec2\_instance\_type](#input\_dtrack\_ec2\_instance\_type)                                                                         | The type to provide an EC2 instance resource.                                                            | `string`       | n/a                                                                                              |   yes    |
-| <a name="input_dtrack_eip_create"></a> [dtrack\_eip\_create](#input\_dtrack\_eip\_create)                                                                                                | Specifies whether a public EIP will be created and associated with the instance.                         | `bool`         | `false`                                                                                          |    no    |
-| <a name="input_dtrack_name"></a> [dtrack\_name](#input\_dtrack\_name)                                                                                                                    | The name for resources.                                                                                  | `string`       | `"component-analysis"`                                                                           |    no    |
-| <a name="input_dtrack_security_group_egress_rules"></a> [dtrack\_security\_group\_egress\_rules](#input\_dtrack\_security\_group\_egress\_rules)                                         | List of egress rules for the security group.                                                             | `list(string)` | <pre>[<br/>  "all-all"<br/>]</pre>                                                               |    no    |
-| <a name="input_dtrack_security_group_ingress_cidr_blocks"></a> [dtrack\_security\_group\_ingress\_cidr\_blocks](#input\_dtrack\_security\_group\_ingress\_cidr\_blocks)                  | List of IPv4 CIDR blocks allowed for ingress, e.g., `0.0.0.0/0` refers to the entire IPv4 address space. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre>                                                             |    no    |
-| <a name="input_dtrack_security_group_ingress_ipv6_cidr_blocks"></a> [dtrack\_security\_group\_ingress\_ipv6\_cidr\_blocks](#input\_dtrack\_security\_group\_ingress\_ipv6\_cidr\_blocks) | List of IPv6 CIDR blocks allowed for ingress, e.g., `::/0` refers to the entire IPv6 address space.      | `list(string)` | <pre>[<br/>  "::/0"<br/>]</pre>                                                                  |    no    |
-| <a name="input_dtrack_security_group_ingress_rules"></a> [dtrack\_security\_group\_ingress\_rules](#input\_dtrack\_security\_group\_ingress\_rules)                                      | List of ingress rules for the security group.                                                            | `list(string)` | <pre>[<br/>  "http-80-tcp",<br/>  "https-443-tcp",<br/>  "ssh-tcp",<br/>  "all-icmp"<br/>]</pre> |    no    |
-| <a name="input_ec2_subnet_id"></a> [ec2\_subnet\_id](#input\_ec2\_subnet\_id)                                                                                                            | The VPC Subnet ID to launch in.                                                                          | `string`       | `null`                                                                                           |    no    |
-| <a name="input_key_pair_create"></a> [key\_pair\_create](#input\_key\_pair\_create)                                                                                                      | Whether to create a new SSH key pair for EC2 access.                                                     | `bool`         | n/a                                                                                              |   yes    |
-| <a name="input_key_path"></a> [key\_path](#input\_key\_path)                                                                                                                             | Path to the public key for SSH access, e.g. `~/.ssh/aws.pub`.                                            | `string`       | `null`                                                                                           |    no    |
-| <a name="input_tags"></a> [tags](#input\_tags)                                                                                                                                           | A map of tags to add to all resources.                                                                   | `map(string)`  | n/a                                                                                              |   yes    |
-| <a name="input_vpc_create"></a> [vpc\_create](#input\_vpc\_create)                                                                                                                       | Whether to create a new VPC.                                                                             | `bool`         | `false`                                                                                          |    no    |
+    ```bash
+    cd environments/<env>/<component>
+    terraform state list
+    ```
 
-## 7. Outputs
+3. Migrate State
 
-| Name                                                                                                         | Description                                                            |
-| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| <a name="output_dtrack_ec2_instance_id"></a> [dtrack\_ec2\_instance\_id](#output\_dtrack\_ec2\_instance\_id) | The ID of the EC2 instance for OWASP Dependency Track.                 |
-| <a name="output_dtrack_ec2_private_ip"></a> [dtrack\_ec2\_private\_ip](#output\_dtrack\_ec2\_private\_ip)    | The private IP address of the EC2 instance for OWASP Dependency Track. |
-| <a name="output_dtrack_ec2_public_dns"></a> [dtrack\_ec2\_public\_dns](#output\_dtrack\_ec2\_public\_dns)    | The public DNS of the EC2 instance for OWASP Dependency Track.         |
-| <a name="output_dtrack_ec2_public_ip"></a> [dtrack\_ec2\_public\_ip](#output\_dtrack\_ec2\_public\_ip)       | The public IP address of the EC2 instance for OWASP Dependency Track.  |
-<!-- END_TF_DOCS -->
+    For each affected resource, run `terraform state mv` to move state from the old address to the new one.
+
+    > [!NOTE]
+    > Use the exact addresses printed by `terraform state list` as the source and the resource addresses as defined in the refactored configuration as the destination.
+
+    ```bash
+    cd environments/<env>/<component>
+    terraform state mv 'module.old.module.path.aws_instance.example[0]' 'module.new.module.path.aws_instance.example[0]'
+    ```
+
+4. Plan State
+
+    Re-run `terraform plan` to verify there are no additions or destructions.
+
+    ```bash
+    terraform plan
+    ```
+
+    If `terraform plan` still shows changes, inspect the differences and either adjust the state mappings or the configuration.
+
+    > [!IMPORTANT]
+    > If unsure, restore the backup and ask for help.
+
+    ```bash
+    mv terraform.tfstate.backup.<timestamp> terraform.tfstate
+    ```
+
+## 4. References
+
+- HashiCorp [Terraform Style Guide]([TODOs](https://developer.hashicorp.com/terraform/language/style)) page.

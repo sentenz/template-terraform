@@ -47,7 +47,7 @@ module "security_group" {
 
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "6.0.2"
+  version = "6.1.1"
 
   # EC2 Instance
   name                   = local.ec2_name

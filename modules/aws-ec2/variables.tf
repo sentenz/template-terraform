@@ -7,7 +7,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources."
+  description = "Global resource tags."
   type        = map(string)
   default = {
     Name        = "AWS EC2 Module"

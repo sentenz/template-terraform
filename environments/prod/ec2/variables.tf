@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 variable "region" {
-  description = "The AWS region where resources will be deployed."
+  description = "The AWS region to  deploy resources."
   type        = string
   default     = "eu-central-1"
 
@@ -19,7 +19,7 @@ variable "profile" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources."
+  description = "Global resource tags."
   type        = map(string)
   default = {
     Name        = "Component Analysis"

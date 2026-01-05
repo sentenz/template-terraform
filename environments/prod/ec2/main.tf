@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 module "component_analysis" {
-  source = "../../"
+  source = "../../../"
 
   # Key Pair
   key_pair_create = var.key_pair_create

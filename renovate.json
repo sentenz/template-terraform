@@ -10,10 +10,17 @@
   ],
   "vulnerabilityAlerts": {
     "labels": [
+      "dependencies",
       "security"
     ],
-    "automerge": false
+    "automerge": true
   },
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendors/**",
+    "**/charts/**"
+  ],
   "packageRules": [
     {
       "description": "Introduces breaking changes or require code adjustments due to changes in public APIs.",
@@ -58,8 +65,5 @@
       "groupSlug": "docker-digests",
       "automerge": false
     }
-  ],
-  "pre-commit": {
-    "enabled": true
-  }
+  ]
 }

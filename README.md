@@ -8,17 +8,29 @@ A Terraform module collection to provision infrastructure for deploying on AWS.
   - [2.1. Authentication](#21-authentication)
     - [2.1.1. AWS Administrator Access](#211-aws-administrator-access)
     - [2.1.2. SSH Key Pair](#212-ssh-key-pair)
-  - [2.2. Secret Manager](#22-secret-manager)
-    - [2.2.1. SOPS](#221-sops)
-  - [2.3. Task Runner](#23-task-runner)
-    - [2.3.1. Makefile](#231-makefile)
-- [3. Troubleshoot](#3-troubleshoot)
-  - [3.1. Snapshot](#31-snapshot)
-    - [3.1.1. Restore Snapshot](#311-restore-snapshot)
-  - [3.2. Inspect Drifts](#32-inspect-drifts)
-  - [3.3. Extend Volume](#33-extend-volume)
-  - [3.4. State Migration](#34-state-migration)
-- [4. References](#4-references)
+- [3. Contribute](#3-contribute)
+  - [3.1. Task Runner](#31-task-runner)
+    - [3.1.1. Make](#311-make)
+  - [3.2. Bootstrap](#32-bootstrap)
+    - [3.2.1. Scripts](#321-scripts)
+  - [3.3. Release Manager](#33-release-manager)
+    - [3.3.1. Semantic-Release](#331-semantic-release)
+  - [3.4. Update Manager](#34-update-manager)
+    - [3.4.1. Renovate](#341-renovate)
+    - [3.4.2. Dependabot](#342-dependabot)
+  - [3.5. Secrets Manager](#35-secrets-manager)
+    - [3.5.1. SOPS](#351-sops)
+  - [3.6. Policy Manager](#36-policy-manager)
+    - [3.6.1. HashiCorp Sentinel](#361-hashicorp-sentinel)
+  - [3.7. Supply Chain Manager](#37-supply-chain-manager)
+    - [3.7.1. Trivy](#371-trivy)
+- [4. Troubleshoot](#4-troubleshoot)
+  - [4.1. Snapshot](#41-snapshot)
+    - [4.1.1. Restore Snapshot](#411-restore-snapshot)
+  - [4.2. Inspect Drifts](#42-inspect-drifts)
+  - [4.3. Extend Volume](#43-extend-volume)
+  - [4.4. State Migration](#44-state-migration)
+- [5. References](#5-references)
 
 ## 1. Details
 
@@ -199,82 +211,249 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
         }
         ```
 
-### 2.2. Secret Manager
+## 3. Contribute
 
-#### 2.2.1. SOPS
+Contribution guidelines and project management tools.
 
-1. GPG Key Pair Generation
+### 3.1. Task Runner
 
-    - Task Runner
-      > Generate a new key pair to be used with SOPS.
+#### 3.1.1. Make
+
+[Make](https://www.gnu.org/software/make/) is a automation tool that defines and manages tasks to streamline development workflows.
+
+1. Insights and Details
+
+    - [Makefile](Makefile)
+      > Makefile defining tasks for building, testing, and managing the project.
+
+2. Usage and Instructions
+
+    - Tasks
+
+      ```bash
+      make help
+      ```
 
       > [!NOTE]
-      > The UID can be customized via the `SOPS_UID` variable (defaults to `sops-dx`).
+      > - Each task description must begin with `##` to be included in the task list.
 
-      ```sh
-      make secret-gpg-generate SOPS_UID=<uid>
+      ```plaintext
+      $ make help
+
+      Tasks
+              A collection of tasks used in the current project.
+
+      Usage
+              make <task>
+
+              bootstrap         Initialize a software development workspace with requisites
+              setup             Install and configure all dependencies essential for development
+              teardown          Remove development artifacts and restore the host to its pre-setup state
       ```
 
-2. GPG Public Key Fingerprint
+### 3.2. Bootstrap
 
-    - Task Runner
-      > Print the  GPG Public Key fingerprint associated with a given UID.
+#### 3.2.1. Scripts
 
-      ```sh
-      make secret-gpg-show SOPS_UID=<uid>
+[scripts/](scripts/README.md) provides scripts to bootstrap, setup, and teardown a software development workspace with requisites.
+
+1. Insights and Details
+
+    - [bootstrap.sh](scripts/bootstrap.sh)
+      > Initializes a software development workspace with requisites.
+
+    - [setup.sh](scripts/setup.sh)
+      > Installs and configures all dependencies essential for development.
+
+    - [teardown.sh](scripts/teardown.sh)
+      > Removes development artifacts and restores the host to its pre-setup state.
+
+2. Usage and Instructions
+
+    - Tasks
+
+      ```bash
+      make bootstrap
       ```
 
-    - [.sops.yaml](.sops.yaml)
-      > The GPG UID is required for populating in `.sops.yaml`.
+      ```bash
+      make setup
+      ```
+
+      ```bash
+      make teardown
+      ```
+
+### 3.3. Release Manager
+
+#### 3.3.1. Semantic-Release
+
+[Semantic-Release](https://github.com/semantic-release/semantic-release) automates the release process by analyzing commit messages to determine the next version number, generating changelog and release notes, and publishing the release.
+
+1. Insights and Details
+
+    - [.releaserc.json](.releaserc.json)
+      > Configuration file for Semantic-Release specifying release rules and plugins.
+
+2. Usage and Instructions
+
+    - CI/CD
 
       ```yaml
-      creation_rules:
-        - pgp: "<fingerprint>" # <uid>
+      uses: sentenz/actions/semantic-release@latest
       ```
 
-3. SOPS Encrypt/Decrypt
+### 3.4. Update Manager
 
-    - Task Runner
-      > Encrypt/decrypt one or more files in place using SOPS.
+#### 3.4.1. Renovate
 
-      ```sh
-      make secret-sops-encrypt <files>
-      make secret-sops-decrypt <files>
+[Renovate](https://github.com/renovatebot/renovate) automates dependency updates by creating merge requests for outdated dependencies, libraries and packages.
+
+1. Insights and Details
+
+    - [renovate.json](renovate.json)
+      > Configuration file for Renovate specifying update rules and schedules.
+
+2. Usage and Instructions
+
+    - CI/CD
+
+      ```yaml
+      uses: sentenz/actions/renovate@latest
       ```
 
-### 2.3. Task Runner
+#### 3.4.2. Dependabot
 
-#### 2.3.1. Makefile
+[Dependabot](https://github.com/dependabot/dependabot-core) automates dependency updates by creating pull requests for outdated dependencies, libraries and packages.
 
-- [Makefile](Makefile)
-  > The Makefile serves as the task runner.
+1. Insights and Details
 
-  > [!NOTE]
-  > - Run the `make help` command in the terminal to list the tasks used for the project.
-  > - Targets **must** have a leading comment line starting with `##` to be included in the task list.
+    - [.github/dependabot.yml](.github/dependabot.yml)
+      > Configuration file for Dependabot specifying update rules and schedules.
 
-  ```plaintext
-  $ make help
+### 3.5. Secrets Manager
 
-  Tasks
-          A collection of tasks used in the current project.
+#### 3.5.1. SOPS
 
-  Usage
-          make <task>
+[SOPS (Secrets OPerationS)](https://github.com/getsops/sops) is a tool for managing and encrypting sensitive data such as passwords, API keys, and other secrets.
 
-          bootstrap                   Initialize a software development workspace with requisites
-          setup                       Install and configure all dependencies essential for development
-          teardown                    Remove development artifacts and restore the host to its pre-setup state
-          tf-infra-test               Perform aggregate testing of Terraform Infrastructure Code
-          tf-infra-deploy             Provisioning of IaC to the specified environment
-          tf-infra-destroy            Destroy Infrastructure for Target Environment
-  ```
+1. Insights and Details
 
-## 3. Troubleshoot
+    - [.sops.yaml](.sops.yaml)
+      > Configuration file for SOPS specifying encryption rules and key management.
 
-### 3.1. Snapshot
+2. Usage and Instructions
 
-#### 3.1.1. Restore Snapshot
+    - GPG Key Pair Generation
+
+      - Tasks
+        > Generate a new key pair to be used with SOPS.
+
+        > [!NOTE]
+        > The UID can be customized via the `SECRETS_SOPS_UID` variable (defaults to `sops-tf`).
+
+        ```bash
+        make secrets-gpg-generate SECRETS_SOPS_UID=<uid>
+        ```
+
+    - GPG Public Key Fingerprint
+
+      - Tasks
+        > Print the  GPG Public Key fingerprint associated with a given UID.
+
+        ```bash
+        make secrets-gpg-show SECRETS_SOPS_UID=<uid>
+        ```
+
+      - [.sops.yaml](.sops.yaml)
+        > The GPG UID is required for populating in `.sops.yaml`.
+
+        ```yaml
+        creation_rules:
+          - pgp: "<fingerprint>" # <uid>
+        ```
+
+    - SOPS Encrypt/Decrypt
+
+      - Tasks
+        > Encrypt/decrypt one or more files in place using SOPS.
+
+        ```bash
+        make secrets-sops-encrypt <files>
+        ```
+
+        ```bash
+        make secrets-sops-decrypt <files>
+        ```
+
+### 3.6. Policy Manager
+
+#### 3.6.1. HashiCorp Sentinel
+
+[HashiCorp Sentinel](https://www.hashicorp.com/sentinel) is a **Policy as Code (PaC)** framework embedded in the HashiCorp Enterprise products to enable fine-grained, logic-based and conditional policy decisions.
+
+1. Insights and Details
+
+    - [sentinel.hcl](sentinel.hcl)
+      > Configuration file for Sentinel specifying policy enforcement levels.
+
+    - [tests/policy](tests/policy/)
+      > Directory contains Sentinel policies to enforce best practices and compliance standards.
+
+2. Usage and Instructions
+
+    - Tasks
+
+      ```bash
+      make tf-test-policy
+      ```
+
+
+### 3.7. Supply Chain Manager
+
+#### 3.7.1. Trivy
+
+[Trivy](https://github.com/aquasecurity/trivy) is a comprehensive security scanner for vulnerabilities, misconfigurations, and compliance issues in container images, filesystems, and source code.
+
+1. Insights and Details
+
+    - [trivy.yaml](trivy.yaml)
+      > Configuration file for Trivy specifying scan settings and options.
+
+    - [.trivyignore](.trivyignore)
+      > File specifying vulnerabilities to ignore during Trivy scans.
+
+2. Usage and Instructions
+
+    - CI/CD
+
+      ```yaml
+      uses: sentenz/actions/trivy@latest
+      ```
+
+    - Tasks
+
+      ```bash
+      make sast-trivy-fs <path>
+      ```
+
+      ```bash
+      make sast-trivy-sbom-cyclonedx-fs <path>
+      ```
+
+      ```bash
+      make sast-trivy-sbom-scan <sbom_path>
+      ```
+
+      ```bash
+      make sast-trivy-sbom-license <sbom_path>
+      ```
+
+## 4. Troubleshoot
+
+### 4.1. Snapshot
+
+#### 4.1.1. Restore Snapshot
 
 Restore an EBS volume from an [EBS snapshot](https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/restore.html#restore-snapshot).
 
@@ -328,7 +507,7 @@ Restore an EBS volume from an [EBS snapshot](https://docs.aws.amazon.com/prescri
 > - Verification of the new device (e.g., `/dev/sdf`) recognition can be done using commands like `lsblk`.
 > - Reboot the EC2 instance after attaching the restored volume is initialized to ensure the device is properly recognized and mounted.
 
-### 3.2. Inspect Drifts
+### 4.2. Inspect Drifts
 
 Inspect the mappings of the instances to triage current state.
 
@@ -341,7 +520,7 @@ Inspect the mappings of the instances to triage current state.
     --query 'Reservations[].Instances[].BlockDeviceMappings[].{DeviceName:DeviceName,VolumeId:Ebs.VolumeId}'
   ```
 
-### 3.3. Extend Volume
+### 4.3. Extend Volume
 
 - [Extend File System](https://docs.aws.amazon.com/ebs/latest/userguide/recognize-expanded-volume-linux.html)
   > After increasing the size of an EBS volume, extend the partition and filesystem to use the additional capacity.
@@ -349,7 +528,7 @@ Inspect the mappings of the instances to triage current state.
   > [!TIP]
   > Perform the file system extension as soon as the volume enters the **optimizing** state.
 
-### 3.4. State Migration
+### 4.4. State Migration
 
 When a module or resource path is refactored but the actual infrastructure remains the same, migrate the Terraform state to the new addresses instead of recreating resources.
 
@@ -400,6 +579,9 @@ When a module or resource path is refactored but the actual infrastructure remai
     mv terraform.tfstate.backup.<timestamp> terraform.tfstate
     ```
 
-## 4. References
+## 5. References
 
 - HashiCorp [Terraform Style Guide]([TODOs](https://developer.hashicorp.com/terraform/language/style)) page.
+- Sentenz [Template DX](https://github.com/sentenz/template-dx) repository.
+- Sentenz [Actions](https://github.com/sentenz/actions) repository.
+- Sentenz [Manager Tools](https://github.com/sentenz/convention/issues/392) article.

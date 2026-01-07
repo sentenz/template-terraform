@@ -39,7 +39,7 @@ variable "key_path" {
   description = "Path to the public key for SSH access."
   type        = string
   sensitive   = true
-  default     = "~/.ssh/samsongroup_e_devops_service_sshkey.pub"
+  default     = "~/.ssh/sshkey.pub"
 
   validation {
     condition     = can(regex("^.*\\.pub$", var.key_path))

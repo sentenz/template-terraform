@@ -43,9 +43,9 @@ variable "key_path" {
   description = "Path to the public key for SSH access, e.g. `~/.ssh/aws.pub`."
   type        = string
   sensitive   = true
-  default     = "~/.ssh/samsongroup_e_dev_devops_service_sshkey.pub"
+  default     = "~/.ssh/sshkey.pub"
 
-  validation {
+    validation {
     condition     = can(regex("^.*\\.pub$", var.key_path))
     error_message = "The key_path must be a valid path to a public key file ending with '.pub'."
   }

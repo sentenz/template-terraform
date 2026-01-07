@@ -1,5 +1,8 @@
 # https://www.toptal.com/developers/gitignore/
 
+logs/*
+*.log.*
+
 ### Terraform ###
 # Local .terraform directories
 **/.terraform/*

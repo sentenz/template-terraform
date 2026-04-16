@@ -32,7 +32,8 @@ updates:
           - major
 
   - package-ecosystem: terraform
-    directory: /
+    directories:
+      - /*/**
     schedule:
       interval: weekly
       day: monday

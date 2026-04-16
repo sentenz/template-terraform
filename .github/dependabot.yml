@@ -33,8 +33,7 @@ updates:
 
   - package-ecosystem: terraform
     directories:
-      - /modules/**
-      - /environments/**
+      - /*/**
     schedule:
       interval: weekly
       day: monday

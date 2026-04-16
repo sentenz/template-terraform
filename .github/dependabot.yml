@@ -32,7 +32,12 @@ updates:
           - major
 
   - package-ecosystem: terraform
-    directory: /
+    directories:
+      - /modules/aws-ec2
+      - /modules/aws-eks
+      - /environments/prod/ec2
+      - /environments/stage/ec2
+      - /environments/stage/eks
     schedule:
       interval: weekly
       day: monday

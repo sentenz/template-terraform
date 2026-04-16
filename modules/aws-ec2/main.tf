@@ -14,7 +14,7 @@ module "key_pair" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.0.1"
+  version = "6.6.1"
 
   count = var.vpc_create ? 1 : 0
 
@@ -47,7 +47,7 @@ module "security_group" {
 
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "6.1.1"
+  version = "6.4.0"
 
   # EC2 Instance
   name                   = local.ec2_name

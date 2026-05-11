@@ -19,7 +19,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "21.18.0"
+  version = "21.20.0"
 
   name               = var.name
   kubernetes_version = var.kubernetes_version
@@ -68,7 +68,7 @@ module "eks" {
 
 module "pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "2.7.0"
+  version = "2.8.0"
 
   # Each entry creates an IAM Role with supplied policies and maps it to a Kubernetes service account via AWS Pod Identity.
   associations = {

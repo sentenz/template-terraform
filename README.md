@@ -392,4 +392,4 @@ When a module or resource path is refactored but the actual infrastructure remai
 - HashiCorp [Terraform Style Guide]([TODOs](https://developer.hashicorp.com/terraform/language/style)) page.
 - Sentenz [Template DX](https://github.com/sentenz/template-dx) repository.
 - Sentenz [Actions](https://github.com/sentenz/actions) repository.
-- Sentenz [Manager Tools](https://github.com/sentenz/convention/issues/392) article.
+- Sentenz [Manager Tools](https://sentenz.github.io/convention/articles/manager-tools/) article.

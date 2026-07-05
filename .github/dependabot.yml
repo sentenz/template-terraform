@@ -1,6 +1,3 @@
-# Dependabot configuration for automated dependency updates
-# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -57,5 +54,31 @@ updates:
         update-types:
           - minor
       terraform-major:
+        update-types:
+          - major
+
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+    labels:
+      - dependencies
+      - devcontainers
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 10
+
+    # Group updates by semantic version type
+    groups:
+      devcontainers-patch:
+        update-types:
+          - patch
+      devcontainers-minor:
+        update-types:
+          - minor
+      devcontainers-major:
         update-types:
           - major

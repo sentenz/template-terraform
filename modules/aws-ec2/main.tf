@@ -2,7 +2,7 @@
 
 module "key_pair" {
   source  = "terraform-aws-modules/key-pair/aws"
-  version = "2.1.1"
+  version = "3.0.0"
 
   count = var.key_pair_create ? 1 : 0
 
@@ -31,7 +31,7 @@ module "vpc" {
 
 module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
-  version = "5.3.1"
+  version = "6.0.0"
 
   name                     = local.security_group_name
   description              = var.security_group_description

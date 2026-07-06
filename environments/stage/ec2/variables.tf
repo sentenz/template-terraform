@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 variable "region" {
-  description = "The AWS region to  deploy resources."
+  description = "The AWS region to deploy resources."
   type        = string
   default     = "eu-central-1"
 
@@ -42,10 +42,10 @@ variable "key_pair_create" {
 variable "key_path" {
   description = "Path to the public key for SSH access, e.g. `~/.ssh/aws.pub`."
   type        = string
-  sensitive   = true
   default     = "~/.ssh/sshkey.pub"
+  sensitive   = true
 
-    validation {
+  validation {
     condition     = can(regex("^.*\\.pub$", var.key_path))
     error_message = "The key_path must be a valid path to a public key file ending with '.pub'."
   }
@@ -126,54 +126,43 @@ variable "dtrack_name" {
 }
 
 variable "dtrack_security_group_ingress_cidr_blocks" {
-  description = "List of IPv4 CIDR blocks allowed for ingress, e.g., `0.0.0.0/0` refers to the entire IPv4 address space."
+  description = "List of trusted IPv4 CIDR blocks allowed for ingress. Public ingress from 0.0.0.0/0 is rejected."
   type        = list(string)
-  # default     = []
+  default     = ["10.0.0.0/16"]
 
-  # validation {
-  #   condition     = alltrue([for cidr in var.dtrack_security_group_ingress_cidr_blocks : can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"])
-  #   error_message = "Public IPv4 ingress (0.0.0.0/0) is not permitted by default."
-  # }
-  default = ["0.0.0.0/0"]
+  validation {
+    condition = alltrue([
+      for cidr in var.dtrack_security_group_ingress_cidr_blocks :
+      can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+    ])
+    error_message = "Each IPv4 ingress entry must be a valid CIDR block and must not be 0.0.0.0/0."
+  }
 }
 
 variable "dtrack_security_group_ingress_ipv6_cidr_blocks" {
-  description = "List of IPv6 CIDR blocks allowed for ingress, e.g., `::/0` refers to the entire IPv6 address space."
+  description = "List of trusted IPv6 CIDR blocks allowed for ingress. Public ingress from ::/0 is rejected."
   type        = list(string)
-  # default     = []
+  default     = []
 
-  # validation {
-  #   condition = alltrue([
-  #     for cidr in var.dtrack_security_group_ingress_ipv6_cidr_blocks :
-  #     can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
-  #   ])
-  #   error_message = "Each IPv6 entry must be a valid CIDR (prefix 0-128) and not be ::/0 by default."
-  # }
-  default = ["::/0"]
+  validation {
+    condition = alltrue([
+      for cidr in var.dtrack_security_group_ingress_ipv6_cidr_blocks :
+      can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
+    ])
+    error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
+  }
 }
 
 variable "dtrack_security_group_ingress_rules" {
   description = "List of ingress rules for the security group."
   type        = list(string)
-  # default     = ["https-443-tcp", "ssh-tcp", "all-icmp"]
-
-  # validation {
-  #   condition     = length(var.dtrack_security_group_ingress_rules) > 0
-  #   error_message = "At least one ingress rule must be specified."
-  # }
-  default = ["http-80-tcp", "https-443-tcp", "ssh-tcp", "all-icmp"]
+  default     = ["https-443-tcp"]
 }
 
 variable "dtrack_security_group_egress_rules" {
   description = "List of egress rules for the security group."
   type        = list(string)
-  # default     = ["https-443-tcp"]
-
-  # validation {
-  #   condition     = length(var.dtrack_security_group_egress_rules) > 0
-  #   error_message = "At least one egress rule must be specified."
-  # }
-  default = ["all-all"]
+  default     = ["https-443-tcp"]
 }
 
 variable "dtrack_eip_create" {

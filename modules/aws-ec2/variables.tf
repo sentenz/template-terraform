@@ -26,8 +26,8 @@ variable "key_pair_create" {
 variable "key_path" {
   description = "Path to SSH public key file for SSH access."
   type        = string
-  sensitive   = true
   default     = null
+  sensitive   = true
 
   validation {
     condition = (
@@ -48,9 +48,14 @@ variable "vpc_create" {
 }
 
 variable "vpc_id" {
-  description = "ID of existing VPC to use."
+  description = "ID of existing VPC to use when vpc_create is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_create || try(length(var.vpc_id) > 0, false)
+    error_message = "vpc_id must be provided when vpc_create is false."
+  }
 }
 
 variable "vpc_cidr" {
@@ -144,44 +149,47 @@ variable "security_group_description" {
 }
 
 variable "security_group_ingress_cidr_blocks" {
-  description = "List of IPv4 CIDR blocks allowed for ingress, restricted to trusted IPs."
+  description = "List of trusted IPv4 CIDR blocks allowed for ingress. Public ingress from 0.0.0.0/0 is rejected."
   type        = list(string)
-  # default     = []
+  default     = []
 
-  # validation {
-  #   condition     = alltrue([for c in var.security_group_ingress_cidr_blocks : c != "0.0.0.0/0"])
-  #   error_message = "Public IPv4 ingress (0.0.0.0/0) is not allowed by default."
-  # }
-  default = ["10.0.0.0/16"]
+  validation {
+    condition = alltrue([
+      for cidr in var.security_group_ingress_cidr_blocks :
+      can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+    ])
+    error_message = "Each IPv4 ingress entry must be a valid CIDR block and must not be 0.0.0.0/0."
+  }
 }
 
 variable "security_group_ingress_ipv6_cidr_blocks" {
-  description = "List of IPv6 CIDR blocks allowed for ingress, restricted to trusted IPv6 ranges."
+  description = "List of trusted IPv6 CIDR blocks allowed for ingress. Public ingress from ::/0 is rejected."
   type        = list(string)
-  # default     = []
+  default     = []
 
-  # validation {
-  #   condition     = alltrue([for c in var.security_group_ingress_ipv6_cidr_blocks : c != "::/0"])
-  #   error_message = "Public IPv6 ingress (::/0) is not allowed by default."
-  # }
-  default = ["https-443-tcp"]
+  validation {
+    condition = alltrue([
+      for cidr in var.security_group_ingress_ipv6_cidr_blocks :
+      can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
+    ])
+    error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
+  }
 }
 
 variable "security_group_ingress_rules" {
-  description = "List of ingress rules for the security group for Least Privilege."
+  description = "List of ingress rules for the security group for least privilege."
   type        = list(string)
-  # default     = []
-  default = ["https-443-tcp"]
+  default     = ["https-443-tcp"]
 }
 
 variable "security_group_egress_rules" {
-  description = "List of egress rules for the security group for Least Privilege."
+  description = "List of egress rules for the security group for least privilege."
   type        = list(string)
   default     = ["https-443-tcp"]
 }
 
 variable "security_group_ingress_with_cidr_blocks" {
-  description = "List of ingress rules with specific CIDR blocks, restricted to trusted IPs."
+  description = "List of ingress rules with specific trusted CIDR blocks. Public ingress tuples are rejected."
   type = list(object({
     cidr_blocks = string
     from_port   = number
@@ -189,31 +197,15 @@ variable "security_group_ingress_with_cidr_blocks" {
     protocol    = string
     description = string
   }))
-  # default = []
+  default = []
 
-  # validation {
-  #   condition = alltrue([
-  #     for r in var.security_group_ingress_with_cidr_blocks :
-  #     r.cidr_blocks != "0.0.0.0/0" && r.cidr_blocks != "::/0"
-  #   ])
-  #   error_message = "Public ingress tuples (0.0.0.0/0 or ::/0) are not allowed by default."
-  # }
-  default = [
-    {
-      cidr_blocks = "10.0.0.0/16"
-      from_port   = 8080
-      to_port     = 8080
-      protocol    = "tcp"
-      description = "HTTP access on port 8080 for internal use only."
-    },
-    {
-      cidr_blocks = "10.0.0.0/16"
-      from_port   = 8443
-      to_port     = 8443
-      protocol    = "tcp"
-      description = "HTTPS access on port 8443 for internal use only."
-    }
-  ]
+  validation {
+    condition = alltrue([
+      for rule in var.security_group_ingress_with_cidr_blocks :
+      rule.cidr_blocks != "0.0.0.0/0" && rule.cidr_blocks != "::/0"
+    ])
+    error_message = "Public ingress tuples (0.0.0.0/0 or ::/0) are not allowed."
+  }
 }
 
 variable "ec2_instance_type" {
@@ -222,13 +214,18 @@ variable "ec2_instance_type" {
 }
 
 variable "ec2_subnet_id" {
-  description = "The VPC Subnet ID to launch in."
+  description = "The VPC subnet ID to launch in when vpc_create is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_create || try(length(var.ec2_subnet_id) > 0, false)
+    error_message = "ec2_subnet_id must be provided when vpc_create is false."
+  }
 }
 
 variable "ec2_ignore_ami_changes" {
-  description = "Whether Terraform should ignore changes to the AMI ID. NOTE Changing this value will result in the replacement of the instance."
+  description = "Whether Terraform should ignore changes to the AMI ID. NOTE Changing this value will result in replacement of the instance."
   type        = bool
   default     = true
 }
@@ -282,7 +279,7 @@ variable "ebs_root_size" {
 }
 
 variable "ebs_data_create" {
-  description = "Whether to create and attach an data EBS volume."
+  description = "Whether to create and attach a data EBS volume."
   type        = bool
   default     = false
 }
@@ -318,7 +315,7 @@ variable "ebs_data_size" {
 }
 
 variable "ebs_data_device_name" {
-  description = "Logical device name for the data EBS volume attachment, the names `/dev/sd[f-p]` map to NVMe `/dev/nvme*n*` device nodes. NOTE Do not use root names `/dev/sda`, `/dev/sda1`."
+  description = "Logical device name for the data EBS volume attachment; names `/dev/sd[f-p]` map to NVMe `/dev/nvme*n*` device nodes. NOTE Do not use root names `/dev/sda`, `/dev/sda1`."
   type        = string
   default     = "/dev/sdf"
 }
@@ -327,5 +324,4 @@ variable "ebs_data_snapshot_id" {
   description = "Snapshot ID to use for the data EBS volume."
   type        = string
   default     = null
-
 }

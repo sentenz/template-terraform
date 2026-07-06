@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@0fba85c9da188c0ec0f2a7b956a6d6802f86f011 # v3.1.2
         with:
           terraform_version: 1.10.5
 
@@ -44,7 +44,7 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@ae78205cfffec9e8d93fd2b3115c7e9d3166d4b6 # v5.0.0
 
       - name: Initialize TFLint plugins
         run: tflint --init
@@ -65,10 +65,10 @@ jobs:
           - environments/stage/eks
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@0fba85c9da188c0ec0f2a7b956a6d6802f86f011 # v3.1.2
         with:
           terraform_version: 1.10.5
 
@@ -87,19 +87,19 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Trivy IaC scan
-        uses: aquasecurity/trivy-action@master
+        uses: sentenz/actions/trivy@de1f3edb8a4562d89b6f8d48e93ce64caa653230 # 1.1.5
         with:
           scan-type: config
-          scan-ref: .
+          scan-target: .
           format: sarif
           output: trivy-terraform.sarif
           severity: HIGH,CRITICAL
 
       - name: Upload Trivy SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
         with:
           sarif_file: trivy-terraform.sarif

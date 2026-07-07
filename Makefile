@@ -556,7 +556,6 @@ pages-doxygen-serve:
 	python3 -m http.server --directory "$$OUTDIR" 8000
 .PHONY: pages-doxygen-serve
 
-
 # ── Terraform Provisioning Manager ───────────────────────────────────────────────────────────────
 
 # Initialize Terraform Configuration for the Target Environment

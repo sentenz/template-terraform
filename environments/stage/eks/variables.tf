@@ -1,8 +1,7 @@
-
 # SPDX-License-Identifier: Apache-2.0
 
 variable "region" {
-  description = "The AWS region to  deploy resources."
+  description = "The AWS region to deploy resources."
   type        = string
   default     = "eu-central-1"
 
@@ -27,10 +26,20 @@ variable "tags" {
     Environment = "Stage"
     Owner       = "DevOps"
   }
+
+  validation {
+    condition     = length(var.tags) > 0
+    error_message = "Tags must not be empty."
+  }
 }
 
 variable "name" {
   description = "The EKS cluster name."
   type        = string
   default     = "k8s"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.name))
+    error_message = "The cluster name can only include alphanumeric characters, dashes (-), or underscores (_)."
+  }
 }

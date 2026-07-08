@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: Terraform
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**/*.tf"
+      - "**/*.tfvars"
+      - "**/*.tftest.hcl"
+      - ".github/workflows/terraform.yml"
+      - ".tflint.hcl"
+      - "trivy.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.tf"
+      - "**/*.tfvars"
+      - "**/*.tftest.hcl"
+      - ".github/workflows/terraform.yml"
+      - ".tflint.hcl"
+      - "trivy.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@0fba85c9da188c0ec0f2a7b956a6d6802f86f011 # v3.1.2
+        with:
+          terraform_version: 1.10.5
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@ae78205cfffec9e8d93fd2b3115c7e9d3166d4b6 # v5.0.0
+
+      - name: Initialize TFLint plugins
+        run: tflint --init
+
+      - name: Run TFLint
+        run: tflint --recursive
+
+  validate:
+    name: Validate ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    needs: static-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        stack:
+          - environments/stage/ec2
+          - environments/prod/ec2
+          - environments/stage/eks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@0fba85c9da188c0ec0f2a7b956a6d6802f86f011 # v3.1.2
+        with:
+          terraform_version: 1.10.5
+
+      - name: Terraform init without backend
+        run: terraform -chdir=${{ matrix.stack }} init -backend=false
+
+      - name: Terraform validate
+        run: terraform -chdir=${{ matrix.stack }} validate
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Trivy IaC scan
+        uses: sentenz/actions/trivy@de1f3edb8a4562d89b6f8d48e93ce64caa653230 # 1.1.5
+        with:
+          scan-type: config
+          scan-target: .
+          format: sarif
+          output: trivy-terraform.sarif
+          severity: HIGH,CRITICAL
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        with:
+          sarif_file: trivy-terraform.sarif

@@ -212,6 +212,37 @@ variable "kms_key_administrators" {
   }
 }
 
+variable "access_entries" {
+  description = "Explicit EKS access entries and policy associations."
+  type = map(object({
+    kubernetes_groups = optional(list(string))
+    principal_arn     = string
+    type              = optional(string, "STANDARD")
+    user_name         = optional(string)
+    tags              = optional(map(string), {})
+    policy_associations = optional(map(object({
+      policy_arn = string
+      access_scope = object({
+        namespaces = optional(list(string))
+        type       = string
+      })
+    })), {})
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for entry in values(var.access_entries) :
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:(role|user)/.+$", entry.principal_arn)) &&
+      alltrue([
+        for association in values(entry.policy_associations) :
+        contains(["cluster", "namespace"], association.access_scope.type)
+      ])
+    ])
+    error_message = "Each access entry must use a valid IAM principal ARN and a cluster or namespace access scope."
+  }
+}
+
 variable "enable_cluster_creator_admin_permissions" {
   description = "Whether to grant the Terraform caller cluster-admin access through an EKS access entry. Prefer explicit access entries for long-lived environments."
   type        = bool
@@ -364,7 +395,7 @@ variable "pod_identity_associations" {
       length(trimspace(association.service_account)) > 0 &&
       length(trimspace(association.role_name)) > 0 &&
       alltrue([
-        for policy_arn in association.policy_arns : can(regex("^arn:[^:]+:iam::[0-9]{12}:policy/.+$", policy_arn))
+        for policy_arn in association.policy_arns : can(regex("^arn:[^:]+:iam::(aws|[0-9]{12}):policy/.+$", policy_arn))
       ])
     ])
     error_message = "Pod Identity associations require namespace, service_account, role_name, and valid IAM policy ARNs."

@@ -89,7 +89,17 @@ jobs:
       - name: Terraform init without backend
         id: init
         continue-on-error: true
-        run: terraform -chdir=${{ matrix.stack }} init -backend=false -lockfile=readonly -no-color 2>&1 | tee terraform-init-${{ matrix.name }}.log
+        run: terraform -chdir=${{ matrix.stack }} init -backend=false -no-color 2>&1 | tee terraform-init-${{ matrix.name }}.log
+
+      - name: Verify dependency lock file
+        id: lockfile
+        if: steps.init.outcome == 'success'
+        continue-on-error: true
+        run: git diff --exit-code -- ${{ matrix.stack }}/.terraform.lock.hcl > terraform-lockfile-${{ matrix.name }}.diff
+
+      - name: Collect dependency lock file
+        if: always() && steps.init.outcome == 'success'
+        run: cp ${{ matrix.stack }}/.terraform.lock.hcl terraform-lockfile-${{ matrix.name }}.hcl
 
       - name: Terraform validate
         id: validate
@@ -104,12 +114,14 @@ jobs:
           name: terraform-validation-${{ matrix.name }}
           path: |
             terraform-init-${{ matrix.name }}.log
+            terraform-lockfile-${{ matrix.name }}.diff
+            terraform-lockfile-${{ matrix.name }}.hcl
             terraform-validate-${{ matrix.name }}.json
           if-no-files-found: warn
           retention-days: 14
 
       - name: Enforce validation result
-        if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure'
+        if: steps.init.outcome == 'failure' || steps.lockfile.outcome == 'failure' || steps.validate.outcome == 'failure'
         run: exit 1
 
   security:

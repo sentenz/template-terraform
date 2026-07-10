@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 locals {
+  vpc_name = "${var.name}_vpc"
+
   vpc_az_count = max(length(var.vpc_private_subnets), length(var.vpc_public_subnets))
   vpc_azs = var.vpc_create ? slice(
     data.aws_availability_zones.available[0].names,

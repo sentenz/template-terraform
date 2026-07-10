@@ -12,6 +12,11 @@ on:
       - "**/*.tftest.hcl"
       - ".github/workflows/terraform.yml"
       - ".tflint.hcl"
+      - "GNUmakefile"
+      - "Makefile"
+      - "docs/terraform-operations.md"
+      - "scripts/terraform-command.sh"
+      - "tests/repository/terraform-command-guard.sh"
       - "trivy.yaml"
   push:
     branches:
@@ -22,6 +27,11 @@ on:
       - "**/*.tftest.hcl"
       - ".github/workflows/terraform.yml"
       - ".tflint.hcl"
+      - "GNUmakefile"
+      - "Makefile"
+      - "docs/terraform-operations.md"
+      - "scripts/terraform-command.sh"
+      - "tests/repository/terraform-command-guard.sh"
       - "trivy.yaml"
 
 permissions:
@@ -42,6 +52,9 @@ jobs:
 
       - name: Terraform format check
         run: terraform fmt -check -recursive
+
+      - name: Validate Terraform command guard
+        run: bash tests/repository/terraform-command-guard.sh
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@ae78205cfffec9e8d93fd2b3115c7e9d3166d4b6 # v5.0.0

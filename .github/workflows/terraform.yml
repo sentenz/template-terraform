@@ -198,6 +198,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - name: Checkov Terraform scan
+        uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7 # Checkov 3.3.8
+        with:
+          directory: .
+          framework: terraform
+          compact: true
+          quiet: true
+          skip_results_upload: true
+          skip_download: true
+          download_external_modules: false
+          output_format: cli
+
       - name: Trivy IaC scan
         uses: sentenz/actions/trivy@de1f3edb8a4562d89b6f8d48e93ce64caa653230 # 1.1.5
         with:

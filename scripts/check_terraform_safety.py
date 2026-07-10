@@ -32,6 +32,8 @@ def executable_lines(path: Path) -> list[tuple[int, str]]:
 def find_direct_destroy() -> list[str]:
     candidates = [ROOT / "Makefile"]
     candidates.extend(sorted((ROOT / "scripts").rglob("*.sh")))
+    candidates.extend(sorted((ROOT / ".github" / "workflows").rglob("*.yml")))
+    candidates.extend(sorted((ROOT / ".github" / "workflows").rglob("*.yaml")))
 
     findings: list[str] = []
     for path in candidates:

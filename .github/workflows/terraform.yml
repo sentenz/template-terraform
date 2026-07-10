@@ -199,6 +199,8 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Checkov Terraform scan
+        id: checkov
+        continue-on-error: true
         uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7 # Checkov 3.3.8
         with:
           directory: .
@@ -208,9 +210,20 @@ jobs:
           skip_results_upload: true
           skip_download: true
           download_external_modules: false
-          output_format: cli
+          output_format: cli,json
+          output_file_path: console,checkov-report.json
+
+      - name: Upload Checkov evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checkov-terraform-report
+          path: checkov-report.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Trivy IaC scan
+        if: always()
         uses: sentenz/actions/trivy@de1f3edb8a4562d89b6f8d48e93ce64caa653230 # 1.1.5
         with:
           scan-type: config
@@ -224,3 +237,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
         with:
           sarif_file: trivy-terraform.sarif
+
+      - name: Enforce Checkov result
+        if: steps.checkov.outcome == 'failure'
+        run: exit 1

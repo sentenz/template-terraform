@@ -24,7 +24,7 @@ module "vpc" {
   public_subnets     = var.vpc_public_subnets
   enable_nat_gateway = var.vpc_enable_nat_gateway
   single_nat_gateway = var.vpc_single_nat_gateway
-  azs                = data.aws_availability_zones.available.names
+  azs                = local.vpc_azs
 
   tags = var.tags
 }
@@ -49,7 +49,6 @@ module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "6.4.0"
 
-  # EC2 Instance
   name                   = local.ec2_name
   instance_type          = var.ec2_instance_type
   ami                    = data.aws_ami.machine.id
@@ -58,10 +57,8 @@ module "ec2_instance" {
   vpc_security_group_ids = [module.security_group.security_group_id]
   ignore_ami_changes     = var.ec2_ignore_ami_changes
 
-  # Security Group (disable built-in)
   create_security_group = false
 
-  # Elastic Block Store (EBS) Volume
   ebs_optimized      = var.ebs_optimized
   enable_volume_tags = var.ebs_enable_volume_tags
 
@@ -91,10 +88,6 @@ module "ec2_instance" {
     }
   } : null
 
-  # Elastic IP (EIP) and Association
-  #
-  # XXX Use AWS Systems Manager (SSM) for secure, internal access without requiring a public IP and SSH access with the need for a key pair
-  # See https://github.com/terraform-aws-modules/terraform-aws-ec2-instance/pull/391
   create_eip = var.eip_create
   eip_tags = {
     Name = local.eip_name

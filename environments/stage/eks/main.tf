@@ -34,17 +34,17 @@ module "k8s" {
   subnet_ids = module.vpc.private_subnets
   vpc_id     = module.vpc.vpc_id
 
-  # Expose the API privately by default
   endpoint_private_access = true
   endpoint_public_access  = false
 
-  # Default node group tuned for typical control/data workloads
+  # Explicit compatibility choice. Replace with managed EKS access entries before disabling.
+  enable_cluster_creator_admin_permissions = true
+
   default_mng_desired_size   = 3
   default_mng_instance_types = ["m6i.large"]
   default_mng_max_size       = 6
   default_mng_min_size       = 2
 
-  # Example: add an extra SPOT pool for batch/CI
   extra_managed_node_groups = {
     spot-ci = {
       capacity_type  = "SPOT"
@@ -61,12 +61,10 @@ module "k8s" {
     }
   }
 
-  # Add-ons beyond defaults if required
   extra_cluster_addons = {
     coredns = { most_recent = true }
   }
 
-  # Pod Identity for an example workload: external-dns
   pod_identity_associations = {
     external-dns = {
       namespace       = "kube-system"

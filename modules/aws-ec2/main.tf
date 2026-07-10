@@ -24,7 +24,7 @@ module "vpc" {
   public_subnets     = var.vpc_public_subnets
   enable_nat_gateway = var.vpc_enable_nat_gateway
   single_nat_gateway = var.vpc_single_nat_gateway
-  azs                = data.aws_availability_zones.available.names
+  azs                = local.vpc_azs
 
   tags = var.tags
 }
@@ -33,35 +33,29 @@ module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "6.0.0"
 
-  name                     = local.security_group_name
-  description              = var.security_group_description
-  ingress_cidr_blocks      = var.security_group_ingress_cidr_blocks
-  ingress_ipv6_cidr_blocks = var.security_group_ingress_ipv6_cidr_blocks
-  ingress_rules            = var.security_group_ingress_rules
-  ingress_with_cidr_blocks = var.security_group_ingress_with_cidr_blocks
-  egress_rules             = var.security_group_egress_rules
-  vpc_id                   = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
+  name          = local.security_group_name
+  description   = var.security_group_description
+  ingress_rules = local.security_group_ingress_rules
+  egress_rules  = local.security_group_egress_rules
+  vpc_id        = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
 
-  tags = var.tags
+  tags = merge(var.tags, { Name = local.security_group_name })
 }
 
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "6.4.0"
 
-  # EC2 Instance
   name                   = local.ec2_name
   instance_type          = var.ec2_instance_type
   ami                    = data.aws_ami.machine.id
   key_name               = try(module.key_pair[0].key_pair_name, null)
   subnet_id              = coalesce(try(module.vpc[0].public_subnets[0], null), var.ec2_subnet_id)
-  vpc_security_group_ids = [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.security_group.id]
   ignore_ami_changes     = var.ec2_ignore_ami_changes
 
-  # Security Group (disable built-in)
   create_security_group = false
 
-  # Elastic Block Store (EBS) Volume
   ebs_optimized      = var.ebs_optimized
   enable_volume_tags = var.ebs_enable_volume_tags
 
@@ -91,10 +85,6 @@ module "ec2_instance" {
     }
   } : null
 
-  # Elastic IP (EIP) and Association
-  #
-  # XXX Use AWS Systems Manager (SSM) for secure, internal access without requiring a public IP and SSH access with the need for a key pair
-  # See https://github.com/terraform-aws-modules/terraform-aws-ec2-instance/pull/391
   create_eip = var.eip_create
   eip_tags = {
     Name = local.eip_name

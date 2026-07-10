@@ -16,6 +16,18 @@ SHELL := bash
 
 TF_ENV ?= dev
 TF_STACK ?= eks
+TF_PLAN ?= terraform.tfplan
+TF_DESTROY_PLAN ?= terraform.destroy.tfplan
+TF_TARGET ?=
+
+# Backward-compatible command-line alias. Ignore a generic TARGET inherited from the environment.
+ifeq ($(origin TARGET),command line)
+ifneq ($(strip $(TF_TARGET)),)
+$(error Set only one of TF_TARGET or TARGET)
+endif
+TF_TARGET := $(TARGET)
+endif
+
 TF = terraform -chdir=environments/$(TF_ENV)/$(TF_STACK)
 
 # Define Targets
@@ -558,6 +570,18 @@ pages-doxygen-serve:
 
 # ── Terraform Provisioning Manager ───────────────────────────────────────────────────────────────
 
+# Verify that the requested environment and stack exist before any state-backed operation
+tf-infra-check-context:
+	@if [ ! -d "environments/$(TF_ENV)/$(TF_STACK)" ]; then \
+		echo "error: Terraform stack 'environments/$(TF_ENV)/$(TF_STACK)' does not exist" >&2; \
+		exit 1; \
+	fi
+	@if [ -n "$(TF_TARGET)" ] && [[ ! "$(TF_TARGET)" =~ ^[A-Za-z0-9_-]+$$ ]]; then \
+		echo "error: TF_TARGET must be a Terraform module name" >&2; \
+		exit 1; \
+	fi
+.PHONY: tf-infra-check-context
+
 # Initialize Terraform Configuration for the Target Environment
 tf-infra-init:
 	$(TF) init -reconfigure
@@ -568,38 +592,44 @@ tf-infra-validate:
 	$(TF) validate
 .PHONY: tf-infra-validate
 
-# Usage: $(MAKE) tf-infra-plan TARGET=<module>
+# Usage: $(MAKE) tf-infra-plan TF_TARGET=<module>
 #
-# Generate execution plan for the Target Environment with optional TARGET for Module provisioning
+# Generate a saved execution plan for the Target Environment with optional TF_TARGET for Module provisioning
 tf-infra-plan:
-	$(TF) plan -out=terraform.tfplan $(if $(strip $(TARGET)),-target=module.$(TARGET),)
+	$(TF) plan -out="$(TF_PLAN)" $(if $(strip $(TF_TARGET)),-target=module.$(TF_TARGET),)
 .PHONY: tf-infra-plan
 
-# Interactive user confirmation before proceeding with Terraform Deploy & Destroy
+# Display the exact saved plan that will be applied
+tf-infra-show-plan:
+	$(TF) show -no-color "$(TF_PLAN)"
+.PHONY: tf-infra-show-plan
+
+# Require environment-qualified confirmation before applying the reviewed plan artifact
 tf-infra-confirm:
 	@echo ""
-	@read -r -p "Confirm: Proceed with 'terraform apply' in '$(TF_ENV)/$(TF_STACK)'$(if $(TARGET), targeting '$(TARGET)',)? [yes $(TF_ENV)/no] " confirm; \
-		if [[ "$$confirm" != "yes $(TF_ENV)" ]]; then \
+	@read -r -p "Type 'apply $(TF_ENV)/$(TF_STACK)' to apply the reviewed plan$(if $(TF_TARGET), targeting '$(TF_TARGET)',): " confirm; \
+		if [[ "$$confirm" != "apply $(TF_ENV)/$(TF_STACK)" ]]; then \
 			echo "Aborted."; \
 			exit 1; \
 		fi
 .PHONY: tf-infra-confirm
 
-# IMPORTANT Do NOT pass -target flag, the saved plan already encodes targeting.
+# IMPORTANT Do NOT pass -target here; the saved plan already encodes targeting.
 #
-# Apply Terraform Plan and Clean Artifacts
+# Apply the exact reviewed Terraform plan artifact
 tf-infra-apply:
-	$(TF) apply "terraform.tfplan"
+	$(TF) apply "$(TF_PLAN)"
 .PHONY: tf-infra-apply
 
-# Usage: $(MAKE) template-tf-infra-deploy TF_STACK=<ec2|eks> TARGET=<optional_module>
+# Usage: $(MAKE) template-tf-infra-deploy TF_STACK=<ec2|eks> TF_TARGET=<optional_module>
 #
-# Deploy infrastructure provisioning across environments
+# Deploy infrastructure from a displayed, confirmed, saved plan artifact
 template-tf-infra-deploy:
+	@$(MAKE) -s tf-infra-check-context
 	@$(MAKE) -s tf-infra-init
 	@$(MAKE) -s tf-infra-validate
-	# @$(MAKE) -s tf-test
 	@$(MAKE) -s tf-infra-plan
+	@$(MAKE) -s tf-infra-show-plan
 	@$(MAKE) -s tf-infra-confirm
 	@$(MAKE) -s tf-infra-apply
 .PHONY: template-tf-infra-deploy
@@ -609,24 +639,60 @@ tf-ec2-deploy:
 	@$(MAKE) -s template-tf-infra-deploy TF_STACK=ec2
 .PHONY: tf-ec2-deploy
 
-## Deploy EC2 infrastructure provisioning across environments
+## Deploy EKS infrastructure provisioning across environments
 tf-eks-deploy:
 	@$(MAKE) -s template-tf-infra-deploy TF_STACK=eks
 .PHONY: tf-eks-deploy
 
-# Usage: $(MAKE) template-tf-infra-destroy TF_STACK=<ec2|eks> TARGET=<optional_module>
+# Usage: $(MAKE) tf-infra-plan-destroy TF_TARGET=<module>
 #
-# Destroy infrastructure provisioning across environments with optional TARGET
+# Generate a saved destroy plan and display every explicit and implicit deletion
+tf-infra-plan-destroy:
+	@if [ -n "$(strip $(TF_TARGET))" ]; then \
+		echo "warning: targeted destroy plans can include implicit dependents; review the complete plan below" >&2; \
+	fi
+	$(TF) plan -destroy -out="$(TF_DESTROY_PLAN)" $(if $(strip $(TF_TARGET)),-target=module.$(TF_TARGET),)
+.PHONY: tf-infra-plan-destroy
+
+# Display the exact saved destroy plan that will be applied
+tf-infra-show-destroy-plan:
+	$(TF) show -no-color "$(TF_DESTROY_PLAN)"
+.PHONY: tf-infra-show-destroy-plan
+
+# Require explicit environment-qualified confirmation after the full deletion graph is displayed
+tf-infra-confirm-destroy:
+	@echo ""
+	@read -r -p "Type 'destroy $(TF_ENV)/$(TF_STACK)' to apply the reviewed destroy plan$(if $(TF_TARGET), targeting '$(TF_TARGET)',): " confirm; \
+		if [[ "$$confirm" != "destroy $(TF_ENV)/$(TF_STACK)" ]]; then \
+			echo "Aborted."; \
+			exit 1; \
+		fi
+.PHONY: tf-infra-confirm-destroy
+
+# IMPORTANT Do NOT run terraform destroy or pass -target here; apply only the reviewed plan artifact.
+tf-infra-apply-destroy:
+	$(TF) apply "$(TF_DESTROY_PLAN)"
+.PHONY: tf-infra-apply-destroy
+
+# Usage: $(MAKE) template-tf-infra-destroy TF_STACK=<ec2|eks> TF_TARGET=<optional_module>
+#
+# Destroy infrastructure only from a displayed, confirmed, saved destroy plan artifact
 template-tf-infra-destroy:
-	$(TF) destroy $(if $(strip $(TARGET)),-target=module.$(TARGET),)
+	@$(MAKE) -s tf-infra-check-context
+	@$(MAKE) -s tf-infra-init
+	@$(MAKE) -s tf-infra-validate
+	@$(MAKE) -s tf-infra-plan-destroy
+	@$(MAKE) -s tf-infra-show-destroy-plan
+	@$(MAKE) -s tf-infra-confirm-destroy
+	@$(MAKE) -s tf-infra-apply-destroy
 .PHONY: template-tf-infra-destroy
 
-## Destroy EC2 infrastructure provisioning across environments
+## Destroy EC2 infrastructure provisioning across environments using a reviewed destroy plan
 tf-ec2-destroy:
 	@$(MAKE) -s template-tf-infra-destroy TF_STACK=ec2
 .PHONY: tf-ec2-destroy
 
-## Destroy EKS infrastructure provisioning across environments
+## Destroy EKS infrastructure provisioning across environments using a reviewed destroy plan
 tf-eks-destroy:
 	@$(MAKE) -s template-tf-infra-destroy TF_STACK=eks
 .PHONY: tf-eks-destroy
@@ -635,7 +701,10 @@ tf-eks-destroy:
 
 # Unit Testing of Terraform Infrastructure Code
 tf-test-unit:
-	terraform test -test-directory="tests/unit"
+	terraform -chdir=modules/aws-ec2 init -backend=false
+	terraform -chdir=modules/aws-ec2 test
+	terraform -chdir=modules/aws-eks init -backend=false
+	terraform -chdir=modules/aws-eks test
 .PHONY: tf-test-unit
 
 # Integration Testing of Terraform Infrastructure Code

@@ -85,10 +85,30 @@ jobs:
           terraform_wrapper: false
 
       - name: Terraform init without backend
-        run: terraform -chdir=${{ matrix.module }} init -backend=false -no-color
+        id: init
+        continue-on-error: true
+        run: terraform -chdir=${{ matrix.module }} init -backend=false -no-color 2>&1 | tee terraform-test-init-${{ matrix.name }}.log
 
       - name: Terraform native tests
-        run: terraform -chdir=${{ matrix.module }} test -no-color
+        id: test
+        if: steps.init.outcome == 'success'
+        continue-on-error: true
+        run: terraform -chdir=${{ matrix.module }} test -no-color 2>&1 | tee terraform-test-${{ matrix.name }}.log
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: terraform-test-${{ matrix.name }}
+          path: |
+            terraform-test-init-${{ matrix.name }}.log
+            terraform-test-${{ matrix.name }}.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce test result
+        if: steps.init.outcome == 'failure' || steps.test.outcome == 'failure'
+        run: exit 1
 
   validate:
     name: Validate ${{ matrix.name }}

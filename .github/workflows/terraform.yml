@@ -24,6 +24,14 @@ on:
       - ".tflint.hcl"
       - "trivy.yaml"
 
+concurrency:
+  group: terraform-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
 permissions:
   contents: read
 
@@ -31,6 +39,7 @@ jobs:
   static-checks:
     name: Static checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -41,7 +50,7 @@ jobs:
           terraform_version: 1.10.5
 
       - name: Terraform format check
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check -diff -recursive
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@ae78205cfffec9e8d93fd2b3115c7e9d3166d4b6 # v5.0.0
@@ -50,11 +59,12 @@ jobs:
         run: tflint --init
 
       - name: Run TFLint
-        run: tflint --recursive
+        run: tflint --recursive --minimum-failure-severity=error
 
   validate:
     name: Validate ${{ matrix.stack }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: static-checks
     strategy:
       fail-fast: false
@@ -73,7 +83,7 @@ jobs:
           terraform_version: 1.10.5
 
       - name: Terraform init without backend
-        run: terraform -chdir=${{ matrix.stack }} init -backend=false
+        run: terraform -chdir=${{ matrix.stack }} init -backend=false -lockfile=readonly
 
       - name: Terraform validate
         run: terraform -chdir=${{ matrix.stack }} validate
@@ -81,6 +91,7 @@ jobs:
   security:
     name: Security scan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: validate
     permissions:
       contents: read

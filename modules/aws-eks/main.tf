@@ -37,6 +37,7 @@ module "eks" {
 
   addons = merge(local.addons_default, var.extra_cluster_addons)
 
+  access_entries                           = var.access_entries
   enable_cluster_creator_admin_permissions = var.enable_cluster_creator_admin_permissions
 
   eks_managed_node_groups = merge(

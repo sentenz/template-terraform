@@ -68,10 +68,41 @@ run "classifies_explicit_ipv6_cidr" {
 
   assert {
     condition = (
-      local.security_group_ingress_explicit_rules["explicit-0|2001:db8::/64"].cidr_ipv4 == null &&
-      local.security_group_ingress_explicit_rules["explicit-0|2001:db8::/64"].cidr_ipv6 == "2001:db8::/64"
+      local.security_group_ingress_explicit_rules["explicit|tcp|443|443|2001:db8::/64"].cidr_ipv4 == null &&
+      local.security_group_ingress_explicit_rules["explicit|tcp|443|443|2001:db8::/64"].cidr_ipv6 == "2001:db8::/64"
     )
     error_message = "Explicit IPv6 CIDRs must populate cidr_ipv6 only."
+  }
+}
+
+run "uses_content_derived_explicit_rule_identity" {
+  command = plan
+
+  variables {
+    security_group_ingress_with_cidr_blocks = [
+      {
+        cidr_blocks = "10.0.1.0/24"
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        description = "Trusted application ingress"
+      },
+      {
+        cidr_blocks = "10.0.2.0/24"
+        from_port   = 22
+        to_port     = 22
+        protocol    = "tcp"
+        description = "Trusted administration ingress"
+      },
+    ]
+  }
+
+  assert {
+    condition = alltrue([
+      contains(keys(local.security_group_ingress_explicit_rules), "explicit|tcp|443|443|10.0.1.0/24"),
+      contains(keys(local.security_group_ingress_explicit_rules), "explicit|tcp|22|22|10.0.2.0/24"),
+    ])
+    error_message = "Explicit rule identities must derive from rule content rather than list position."
   }
 }
 

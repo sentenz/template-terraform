@@ -27,7 +27,6 @@ variable "key_path" {
   description = "Path to SSH public key file for SSH access."
   type        = string
   default     = null
-  sensitive   = true
 
   validation {
     condition = (
@@ -39,6 +38,8 @@ variable "key_path" {
     )
     error_message = "When key_pair_create is true, key_path must be provided and end with '.pub'."
   }
+
+  sensitive = true
 }
 
 variable "vpc_create" {
@@ -170,26 +171,42 @@ variable "security_group_ingress_ipv6_cidr_blocks" {
   validation {
     condition = alltrue([
       for cidr in var.security_group_ingress_ipv6_cidr_blocks :
-      can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
+      can(cidrhost(cidr, 0)) && strcontains(cidr, ":") && cidr != "::/0"
     ])
-    error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
+    error_message = "Each IPv6 ingress entry must be a valid IPv6 CIDR block and must not be ::/0."
   }
 }
 
 variable "security_group_ingress_rules" {
-  description = "List of ingress rules for the security group for least privilege."
+  description = "Supported named ingress rule presets."
   type        = list(string)
   default     = ["https-443-tcp"]
+
+  validation {
+    condition = alltrue([
+      for rule_name in var.security_group_ingress_rules :
+      contains(["http-80-tcp", "https-443-tcp", "ssh-tcp"], rule_name)
+    ])
+    error_message = "security_group_ingress_rules supports only http-80-tcp, https-443-tcp, and ssh-tcp."
+  }
 }
 
 variable "security_group_egress_rules" {
-  description = "List of egress rules for the security group for least privilege."
+  description = "Supported named egress rule presets."
   type        = list(string)
   default     = ["https-443-tcp"]
+
+  validation {
+    condition = alltrue([
+      for rule_name in var.security_group_egress_rules :
+      contains(["http-80-tcp", "https-443-tcp", "ssh-tcp"], rule_name)
+    ])
+    error_message = "security_group_egress_rules supports only http-80-tcp, https-443-tcp, and ssh-tcp."
+  }
 }
 
 variable "security_group_ingress_with_cidr_blocks" {
-  description = "List of ingress rules with specific trusted CIDR blocks. Public ingress tuples are rejected."
+  description = "Ingress rules with one or more comma-separated trusted IPv4 or IPv6 CIDR blocks. Public ingress is rejected."
   type = list(object({
     cidr_blocks = string
     from_port   = number
@@ -200,11 +217,16 @@ variable "security_group_ingress_with_cidr_blocks" {
   default = []
 
   validation {
-    condition = alltrue([
-      for rule in var.security_group_ingress_with_cidr_blocks :
-      rule.cidr_blocks != "0.0.0.0/0" && rule.cidr_blocks != "::/0"
-    ])
-    error_message = "Public ingress tuples (0.0.0.0/0 or ::/0) are not allowed."
+    condition = alltrue(flatten([
+      for rule in var.security_group_ingress_with_cidr_blocks : [
+        for cidr in split(",", rule.cidr_blocks) :
+        length(trimspace(cidr)) > 0 &&
+        can(cidrhost(trimspace(cidr), 0)) &&
+        trimspace(cidr) != "0.0.0.0/0" &&
+        trimspace(cidr) != "::/0"
+      ]
+    ]))
+    error_message = "Every explicit ingress CIDR must be valid and must not be 0.0.0.0/0 or ::/0."
   }
 }
 

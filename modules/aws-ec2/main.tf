@@ -52,7 +52,7 @@ module "ec2_instance" {
   ami                    = data.aws_ami.machine.id
   key_name               = try(module.key_pair[0].key_pair_name, null)
   subnet_id              = coalesce(try(module.vpc[0].public_subnets[0], null), var.ec2_subnet_id)
-  vpc_security_group_ids = [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.security_group.id]
   ignore_ami_changes     = var.ec2_ignore_ami_changes
 
   # Security Group (disable built-in)

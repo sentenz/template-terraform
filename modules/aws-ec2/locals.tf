@@ -67,9 +67,9 @@ locals {
 
   security_group_ingress_explicit_rules = {
     for item in flatten([
-      for rule_index, rule in var.security_group_ingress_with_cidr_blocks : [
+      for rule in var.security_group_ingress_with_cidr_blocks : [
         for cidr in split(",", rule.cidr_blocks) : {
-          key = "explicit-${rule_index}|${trimspace(cidr)}"
+          key = "explicit|${lower(rule.protocol)}|${rule.from_port}|${rule.to_port}|${trimspace(cidr)}"
           value = {
             cidr_ipv4   = strcontains(trimspace(cidr), ":") ? null : trimspace(cidr)
             cidr_ipv6   = strcontains(trimspace(cidr), ":") ? trimspace(cidr) : null

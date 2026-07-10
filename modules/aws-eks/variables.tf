@@ -134,7 +134,7 @@ variable "node_subnet_ids" {
   default     = null
 
   validation {
-    condition = var.node_subnet_ids == null || (
+    condition = var.node_subnet_ids == null ? true : (
       length(var.node_subnet_ids) > 0 && alltrue([
         for subnet_id in var.node_subnet_ids : can(regex("^subnet-[0-9a-f]+$", subnet_id))
       ])

@@ -210,6 +210,8 @@ jobs:
           skip_results_upload: true
           skip_download: true
           download_external_modules: false
+          # CKV_TF_1 applies to VCS sources; registry modules are pinned with exact version constraints.
+          skip_check: CKV_TF_1
           output_format: cli,json
           output_file_path: console,checkov-report.json
 

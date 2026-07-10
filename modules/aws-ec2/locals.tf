@@ -43,7 +43,7 @@ locals {
         for cidr in var.security_group_ingress_cidr_blocks : {
           key = "${rule_name}|ipv4|${cidr}"
           value = merge(
-            try(local.security_group_rule_presets[rule_name], {}),
+            local.security_group_rule_presets[rule_name],
             { cidr_ipv4 = cidr },
           )
         }
@@ -57,7 +57,7 @@ locals {
         for cidr in var.security_group_ingress_ipv6_cidr_blocks : {
           key = "${rule_name}|ipv6|${cidr}"
           value = merge(
-            try(local.security_group_rule_presets[rule_name], {}),
+            local.security_group_rule_presets[rule_name],
             { cidr_ipv6 = cidr },
           )
         }
@@ -71,7 +71,8 @@ locals {
         for cidr in split(",", rule.cidr_blocks) : {
           key = "explicit-${rule_index}|${trimspace(cidr)}"
           value = {
-            cidr_ipv4   = trimspace(cidr)
+            cidr_ipv4   = strcontains(trimspace(cidr), ":") ? null : trimspace(cidr)
+            cidr_ipv6   = strcontains(trimspace(cidr), ":") ? trimspace(cidr) : null
             description = rule.description
             from_port   = rule.from_port
             ip_protocol = rule.protocol
@@ -91,7 +92,7 @@ locals {
   security_group_egress_rules = {
     for rule_name in var.security_group_egress_rules :
     "${rule_name}|ipv4|0.0.0.0/0" => merge(
-      try(local.security_group_rule_presets[rule_name], {}),
+      local.security_group_rule_presets[rule_name],
       { cidr_ipv4 = "0.0.0.0/0" },
     )
   }

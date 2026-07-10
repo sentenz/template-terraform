@@ -33,14 +33,11 @@ module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "6.0.0"
 
-  name                     = local.security_group_name
-  description              = var.security_group_description
-  ingress_cidr_blocks      = var.security_group_ingress_cidr_blocks
-  ingress_ipv6_cidr_blocks = var.security_group_ingress_ipv6_cidr_blocks
-  ingress_rules            = var.security_group_ingress_rules
-  ingress_with_cidr_blocks = var.security_group_ingress_with_cidr_blocks
-  egress_rules             = var.security_group_egress_rules
-  vpc_id                   = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
+  name          = local.security_group_name
+  description   = var.security_group_description
+  ingress_rules = local.security_group_ingress_rules
+  egress_rules  = local.security_group_egress_rules
+  vpc_id        = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
 
   tags = var.tags
 }

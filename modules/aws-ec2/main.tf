@@ -33,16 +33,13 @@ module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "6.0.0"
 
-  name                     = local.security_group_name
-  description              = var.security_group_description
-  ingress_cidr_blocks      = var.security_group_ingress_cidr_blocks
-  ingress_ipv6_cidr_blocks = var.security_group_ingress_ipv6_cidr_blocks
-  ingress_rules            = var.security_group_ingress_rules
-  ingress_with_cidr_blocks = var.security_group_ingress_with_cidr_blocks
-  egress_rules             = var.security_group_egress_rules
-  vpc_id                   = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
+  name          = local.security_group_name
+  description   = var.security_group_description
+  ingress_rules = local.security_group_ingress_rules
+  egress_rules  = local.security_group_egress_rules
+  vpc_id        = coalesce(try(module.vpc[0].vpc_id, null), var.vpc_id)
 
-  tags = var.tags
+  tags = merge(var.tags, { Name = local.security_group_name })
 }
 
 module "ec2_instance" {
@@ -54,7 +51,7 @@ module "ec2_instance" {
   ami                    = data.aws_ami.machine.id
   key_name               = try(module.key_pair[0].key_pair_name, null)
   subnet_id              = coalesce(try(module.vpc[0].public_subnets[0], null), var.ec2_subnet_id)
-  vpc_security_group_ids = [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.security_group.id]
   ignore_ami_changes     = var.ec2_ignore_ami_changes
 
   create_security_group = false

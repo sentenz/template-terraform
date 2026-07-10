@@ -8,5 +8,11 @@ locals {
   eip_name            = "${var.name}_eip"
   ebs_root_name       = "${var.name}_ebs-root"
   ebs_data_name       = "${var.name}_ebs-data"
-  name_suffix         = "${var.tags["Name"]}-${var.tags["Environment"]}"
+
+  vpc_az_count = max(length(var.vpc_private_subnets), length(var.vpc_public_subnets))
+  vpc_azs = var.vpc_create ? slice(
+    data.aws_availability_zones.available[0].names,
+    0,
+    local.vpc_az_count,
+  ) : []
 }

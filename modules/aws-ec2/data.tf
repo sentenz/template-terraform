@@ -21,5 +21,7 @@ data "aws_ami" "machine" {
 }
 
 data "aws_availability_zones" "available" {
+  count = var.vpc_create ? 1 : 0
+
   state = var.azs_state
 }

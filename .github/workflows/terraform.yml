@@ -14,7 +14,8 @@ on:
       - "Makefile"
       - "scripts/check_terraform_safety.py"
       - "scripts/**/*.sh"
-      - ".github/workflows/terraform.yml"
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
       - ".tflint.hcl"
       - "trivy.yaml"
   push:
@@ -28,7 +29,8 @@ on:
       - "Makefile"
       - "scripts/check_terraform_safety.py"
       - "scripts/**/*.sh"
-      - ".github/workflows/terraform.yml"
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
       - ".tflint.hcl"
       - "trivy.yaml"
 

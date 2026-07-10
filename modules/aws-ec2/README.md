@@ -27,8 +27,8 @@ module "application" {
   name              = "application"
   ec2_instance_type = "t3.large"
 
-  vpc_create   = false
-  vpc_id       = data.aws_vpc.existing.id
+  vpc_create    = false
+  vpc_id        = data.aws_vpc.existing.id
   ec2_subnet_id = data.aws_subnet.private.id
 
   security_group_ingress_cidr_blocks = ["10.0.0.0/16"]

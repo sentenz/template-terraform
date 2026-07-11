@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@0fba85c9da188c0ec0f2a7b956a6d6802f86f011 # v3.1.2
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: 1.10.5
 
@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@0fba85c9da188c0ec0f2a7b956a6d6802f86f011 # v3.1.2
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: 1.10.5
 

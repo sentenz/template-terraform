@@ -12,6 +12,11 @@ on:
       - "**/*.tftest.hcl"
       - ".github/workflows/terraform.yml"
       - ".tflint.hcl"
+      - "GNUmakefile"
+      - "Makefile"
+      - "docs/terraform-operations.md"
+      - "scripts/terraform-command.sh"
+      - "tests/repository/terraform-command-guard.sh"
       - "trivy.yaml"
   push:
     branches:
@@ -22,6 +27,11 @@ on:
       - "**/*.tftest.hcl"
       - ".github/workflows/terraform.yml"
       - ".tflint.hcl"
+      - "GNUmakefile"
+      - "Makefile"
+      - "docs/terraform-operations.md"
+      - "scripts/terraform-command.sh"
+      - "tests/repository/terraform-command-guard.sh"
       - "trivy.yaml"
 
 permissions:
@@ -43,6 +53,9 @@ jobs:
       - name: Terraform format check
         run: terraform fmt -check -recursive
 
+      - name: Validate Terraform command guard
+        run: bash tests/repository/terraform-command-guard.sh
+
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
 
@@ -50,7 +63,24 @@ jobs:
         run: tflint --init
 
       - name: Run TFLint
-        run: tflint --recursive
+        id: tflint
+        continue-on-error: true
+        run: tflint --recursive --format compact > tflint-report.txt 2>&1
+
+      - name: Upload TFLint report
+        if: steps.tflint.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tflint-report
+          path: tflint-report.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce TFLint
+        if: steps.tflint.outcome == 'failure'
+        run: |
+          cat tflint-report.txt
+          exit 1
 
   validate:
     name: Validate ${{ matrix.stack }}
@@ -59,10 +89,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stack:
-          - environments/stage/ec2
-          - environments/prod/ec2
-          - environments/stage/eks
+        include:
+          - stack: environments/stage/ec2
+            report: stage-ec2
+          - stack: environments/prod/ec2
+            report: prod-ec2
+          - stack: environments/stage/eks
+            report: stage-eks
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -76,7 +109,24 @@ jobs:
         run: terraform -chdir=${{ matrix.stack }} init -backend=false
 
       - name: Terraform validate
-        run: terraform -chdir=${{ matrix.stack }} validate
+        id: validate
+        continue-on-error: true
+        run: terraform -chdir=${{ matrix.stack }} validate -json > terraform-validate-report.json
+
+      - name: Upload Terraform validate report
+        if: steps.validate.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: terraform-validate-${{ matrix.report }}
+          path: terraform-validate-report.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce Terraform validate
+        if: steps.validate.outcome == 'failure'
+        run: |
+          cat terraform-validate-report.json
+          exit 1
 
   security:
     name: Security scan

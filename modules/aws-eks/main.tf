@@ -19,7 +19,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "21.24.0"
+  version = "21.24.1"
 
   name               = var.name
   kubernetes_version = var.kubernetes_version
@@ -68,7 +68,7 @@ module "eks" {
 
 module "pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "2.8.1"
+  version = "2.8.2"
 
   associations = {
     for k, v in var.pod_identity_associations :

@@ -2,7 +2,7 @@
 
 module "key_pair" {
   source  = "terraform-aws-modules/key-pair/aws"
-  version = "3.0.0"
+  version = "3.0.1"
 
   count = var.key_pair_create ? 1 : 0
 

@@ -37,7 +37,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Update versioned Docker image references in Makefiles and KinD cluster configuration.",
+      "description": "Update versioned Docker image references in Makefiles.",
       "managerFilePatterns": [
         "**/[Mm]akefile",
         "**/GNUMakefile",

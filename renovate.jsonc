@@ -105,7 +105,8 @@
       ],
       "matchFileNames": [
         "**/*.tf",
-        "**/*.tofu"
+        "**/*.tofu",
+        "**/.terraform.lock.hcl"
       ],
       "matchUpdateTypes": [
         "major",

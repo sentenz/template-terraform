@@ -23,3 +23,5 @@ jobs:
         uses: sentenz/actions/renovate@62c4352acdd45163bd10ae248b71c6ad6a99e3c3 # 1.4.1
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_CONFIG_VALIDATION_ERROR: "true"

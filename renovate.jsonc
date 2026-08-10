@@ -55,11 +55,11 @@
   "packageRules": [
     {
       "description": "Group major updates.",
-      "excludeManagers": [
-        "terraform"
+      "matchManagers": [
+        "!terraform"
       ],
-      "excludeDatasources": [
-        "docker"
+      "matchDatasources": [
+        "!docker"
       ],
       "matchUpdateTypes": [
         "major"
@@ -70,11 +70,11 @@
     },
     {
       "description": "Group minor updates.",
-      "excludeManagers": [
-        "terraform"
+      "matchManagers": [
+        "!terraform"
       ],
-      "excludeDatasources": [
-        "docker"
+      "matchDatasources": [
+        "!docker"
       ],
       "matchUpdateTypes": [
         "minor"
@@ -85,11 +85,11 @@
     },
     {
       "description": "Group patch updates.",
-      "excludeManagers": [
-        "terraform"
+      "matchManagers": [
+        "!terraform"
       ],
-      "excludeDatasources": [
-        "docker"
+      "matchDatasources": [
+        "!docker"
       ],
       "matchUpdateTypes": [
         "patch"

@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Trivy IaC scan
-        uses: sentenz/actions/trivy@c393f1ada4c285deb9408247138486bbc773b7fe # 1.4.0
+        uses: sentenz/actions/trivy@62c4352acdd45163bd10ae248b71c6ad6a99e3c3 # 1.4.1
         with:
           scan-type: config
           scan-target: .
@@ -100,6 +100,6 @@ jobs:
 
       - name: Upload Trivy SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           sarif_file: trivy-terraform.sarif

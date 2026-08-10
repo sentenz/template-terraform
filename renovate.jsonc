@@ -47,7 +47,7 @@
       "matchStrings": [
         "(?<depName>(?:(?:[A-Za-z0-9.-]+(?::[0-9]+)?/)?[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+)):(?<currentValue>v?\\d[0-9A-Za-z_.-]*)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?"
       ],
-      "autoReplaceStringTemplate": "{{{prefix}}}{{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{else}}{{#if currentDigest}}@{{{currentDigest}}}{{/if}}{{/if}}",
+      "autoReplaceStringTemplate": "{{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{else}}{{#if currentDigest}}@{{{currentDigest}}}{{/if}}{{/if}}",
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
     }
@@ -55,11 +55,11 @@
   "packageRules": [
     {
       "description": "Group major updates.",
-      "matchManagers": [
-        "!terraform"
+      "excludeManagers": [
+        "terraform"
       ],
-      "matchDatasources": [
-        "!docker"
+      "excludeDatasources": [
+        "docker"
       ],
       "matchUpdateTypes": [
         "major"
@@ -70,11 +70,11 @@
     },
     {
       "description": "Group minor updates.",
-      "matchManagers": [
-        "!terraform"
+      "excludeManagers": [
+        "terraform"
       ],
-      "matchDatasources": [
-        "!docker"
+      "excludeDatasources": [
+        "docker"
       ],
       "matchUpdateTypes": [
         "minor"
@@ -85,11 +85,11 @@
     },
     {
       "description": "Group patch updates.",
-      "matchManagers": [
-        "!terraform"
+      "excludeManagers": [
+        "terraform"
       ],
-      "matchDatasources": [
-        "!docker"
+      "excludeDatasources": [
+        "docker"
       ],
       "matchUpdateTypes": [
         "patch"

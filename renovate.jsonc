@@ -41,8 +41,7 @@
       "managerFilePatterns": [
         "**/[Mm]akefile",
         "**/GNUMakefile",
-        "**/*.mk",
-        "**/kind-cluster.{yml,yaml}"
+        "**/*.mk"
       ],
       "matchStringsStrategy": "any",
       "matchStrings": [

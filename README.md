@@ -8,7 +8,7 @@ A Terraform module collection to provision infrastructure for deploying on AWS.
   - [2.1. Authentication](#21-authentication)
     - [2.1.1. AWS Administrator Access](#211-aws-administrator-access)
     - [2.1.2. SSH Key Pair](#212-ssh-key-pair)
-- [3. Contribute](#3-contribute)
+- [3. Contribution](#2-contribution)
 - [4. Troubleshoot](#4-troubleshoot)
   - [4.1. Snapshot](#41-snapshot)
     - [4.1.1. Restore Snapshot](#411-restore-snapshot)
@@ -196,9 +196,9 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
         }
         ```
 
-## 3. Contribute
+## 3. Contribution
 
-[CONTRIBUTING.md](CONTRIBUTING.md) provides guidens and instructions for contributing to the project.
+[CONTRIBUTING.md](CONTRIBUTING.md) provides guidance and instructions for contributing to the project.
 
 - [AI Agents](CONTRIBUTING.md#1-ai-agents)
   > Automated tools that assist in various development tasks such as code generation, testing, and documentation.

@@ -2,7 +2,7 @@
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.6.1"
+  version = "6.7.2"
 
   count = var.vpc_create ? 1 : 0
 
@@ -68,7 +68,7 @@ module "eks" {
 
 module "pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "2.8.2"
+  version = "2.9.0"
 
   associations = {
     for k, v in var.pod_identity_associations :

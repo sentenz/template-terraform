@@ -2,7 +2,7 @@
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.7.2"
+  version = "6.7.3"
 
   count = var.vpc_create ? 1 : 0
 
@@ -19,7 +19,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "21.25.0"
+  version = "21.25.1"
 
   name               = var.name
   kubernetes_version = var.kubernetes_version

@@ -185,12 +185,22 @@ variable "security_group_ingress_rules" {
   description = "List of ingress rules for the security group for least privilege."
   type        = list(string)
   default     = ["https-443-tcp"]
+
+  validation {
+    condition     = alltrue([for rule in var.security_group_ingress_rules : contains(keys(local.security_group_rule_catalog), rule)])
+    error_message = "Supported named rules are http-80-tcp, https-443-tcp and ssh-22-tcp."
+  }
 }
 
 variable "security_group_egress_rules" {
   description = "List of egress rules for the security group for least privilege."
   type        = list(string)
   default     = ["https-443-tcp"]
+
+  validation {
+    condition     = alltrue([for rule in var.security_group_egress_rules : contains(keys(local.security_group_rule_catalog), rule)])
+    error_message = "Supported named rules are http-80-tcp, https-443-tcp and ssh-22-tcp."
+  }
 }
 
 variable "security_group_ingress_with_cidr_blocks" {

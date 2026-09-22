@@ -25,6 +25,7 @@ and the existing `.agents/skills/terraform` project guidance.
 ## Findings addressed
 
 - EKS referenced an undefined `local.vpc_name`. The name now derives from the module input.
+- EC2 still called the security-group v5 interface despite pinning v6. Restored the v6 rule-map adapter from project history (`8c29b21`) and its `id` output, retaining historical rule keys and splitting comma-separated custom CIDRs. Named presets are explicitly validated as HTTP, HTTPS or SSH; other ingress ports use custom tuples.
 - EKS passed list-shaped taints to the pinned EKS module's map-shaped input. The wrapper now converts its existing public list interface to a map keyed by taint key/effect.
 - EC2 key loading now expands `~` and only evaluates the file when key-pair creation is enabled.
 - EC2 network selection now follows `vpc_create` explicitly instead of falling through `coalesce`; created-network mode requires a public subnet.
@@ -43,7 +44,9 @@ backends with encryption and lock files are retained. No backend initialization,
 production plan, apply, destroy or state migration was performed during review.
 
 The changes address testing blind spots, CI drift and input-contract gaps.
-Managed-resource/module addresses remain stable. Stricter validation may reject
+Top-level module addresses remain stable. The restored v6 adapter retains the
+historical single-CIDR rule keys, but installations with older v5 security-group
+state need a reviewed rule migration plan. Stricter validation may reject
 previously accepted invalid input; the staging subnet override now takes effect
 when explicitly supplied. Review an environment plan before rollout.
 

@@ -31,7 +31,7 @@ override_module {
 override_module {
   target = module.security_group
   outputs = {
-    security_group_id = "sg-0123456789abcdef0"
+    id = "sg-0123456789abcdef0"
   }
 }
 
@@ -107,6 +107,25 @@ run "trusted_ingress" {
       protocol    = "tcp"
       description = "Trusted HTTPS clients"
     }]
+  }
+
+  assert {
+    condition = (
+      length(local.security_group_ingress_rules) == 5 &&
+      local.security_group_ingress_rules["https-443-tcp-ipv4-0"].cidr_ipv4 == "10.0.0.0/8" &&
+      local.security_group_ingress_rules["https-443-tcp-ipv6-0"].cidr_ipv6 == "2001:db8::/32" &&
+      local.security_group_ingress_rules["custom-0-1"].cidr_ipv4 == "192.168.0.0/16"
+    )
+    error_message = "Named and comma-separated ingress must map to individual v6 rules."
+  }
+
+  assert {
+    condition = (
+      length(local.security_group_egress_rules) == 1 &&
+      local.security_group_egress_rules["https-443-tcp-0"].from_port == 443 &&
+      local.security_group_egress_rules["https-443-tcp-0"].cidr_ipv4 == "0.0.0.0/0"
+    )
+    error_message = "Default egress must remain limited to HTTPS over IPv4."
   }
 }
 

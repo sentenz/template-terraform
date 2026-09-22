@@ -53,6 +53,20 @@ when explicitly supplied. Review an environment plan before rollout.
 Exact validation commands and the distinction between mocked and live testing
 are documented in [tests/README.md](../tests/README.md).
 
+Validation of code commit `51cf2a11a2325be34a582648decaead19fd5e1ca` in
+[GitHub Actions](https://github.com/sentenz/template-terraform/actions/runs/35760923902):
+
+- `terraform fmt -check -diff -recursive`: passed.
+- `tflint --recursive`: passed.
+- `terraform validate`: passed for both modules and all three environments.
+- `terraform test -test-directory=tests/unit`: 41 passed, 0 failed.
+- Separate Semgrep and Trivy workflows: passed.
+
+Terraform was unavailable in the local review runtime and the binary download
+was blocked. Local HCL parsing, workflow YAML checks and `git diff --check`
+passed; canonical Terraform validation was performed by CI. No live AWS
+integration test or deployment plan was run.
+
 ## Follow-up requiring deployment context
 
 The existing Pod Identity wrapper passes `role_name`, `policy_arns` and

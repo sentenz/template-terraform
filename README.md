@@ -2,6 +2,10 @@
 
 A Terraform module collection to provision infrastructure for deploying on AWS.
 
+See [Terraform tests](tests/README.md) for credential-free contract tests and
+opt-in integration testing, and the [Terraform skills review](docs/terraform-skills-review.md)
+for applied guidance and remaining migration findings.
+
 - [1. Details](#1-details)
   - [1.1. Modules](#11-modules)
 - [2. Usage](#2-usage)

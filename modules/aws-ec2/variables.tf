@@ -74,6 +74,11 @@ variable "vpc_public_subnets" {
   description = "List of public subnet CIDR blocks."
   type        = list(string)
   default     = ["192.168.101.0/24"]
+
+  validation {
+    condition     = !var.vpc_create || try(length(var.vpc_public_subnets) > 0, false)
+    error_message = "vpc_public_subnets must contain at least one subnet when vpc_create is true."
+  }
 }
 
 variable "vpc_enable_nat_gateway" {
@@ -156,7 +161,7 @@ variable "security_group_ingress_cidr_blocks" {
   validation {
     condition = alltrue([
       for cidr in var.security_group_ingress_cidr_blocks :
-      can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+      try(cidrnetmask(cidr) != "0.0.0.0", false)
     ])
     error_message = "Each IPv4 ingress entry must be a valid CIDR block and must not be 0.0.0.0/0."
   }
@@ -170,7 +175,7 @@ variable "security_group_ingress_ipv6_cidr_blocks" {
   validation {
     condition = alltrue([
       for cidr in var.security_group_ingress_ipv6_cidr_blocks :
-      can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
+      can(cidrhost(cidr, 0)) && strcontains(cidr, ":") && try(tonumber(split("/", cidr)[1]) > 0, false)
     ])
     error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
   }
@@ -202,9 +207,12 @@ variable "security_group_ingress_with_cidr_blocks" {
   validation {
     condition = alltrue([
       for rule in var.security_group_ingress_with_cidr_blocks :
-      rule.cidr_blocks != "0.0.0.0/0" && rule.cidr_blocks != "::/0"
+      alltrue([
+        for cidr in split(",", rule.cidr_blocks) :
+        try(cidrnetmask(trimspace(cidr)) != "0.0.0.0", false)
+      ])
     ])
-    error_message = "Public ingress tuples (0.0.0.0/0 or ::/0) are not allowed."
+    error_message = "Every comma-separated ingress CIDR must be valid IPv4 with a nonzero prefix length."
   }
 }
 

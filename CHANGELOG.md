@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.5](https://github.com/sentenz/template-terraform/compare/1.0.4...1.0.5) (2026-09-22)
+
+### Bug Fixes
+
+* **deps:** update terraform kubernetes to v3 ([#64](https://github.com/sentenz/template-terraform/issues/64)) ([fcbb1ac](https://github.com/sentenz/template-terraform/commit/fcbb1ac5abadaf62980a8fc09277d2e81f99d9be))
+
 ## [1.0.4](https://github.com/sentenz/template-terraform/compare/1.0.3...1.0.4) (2026-09-22)
 
 ### Bug Fixes

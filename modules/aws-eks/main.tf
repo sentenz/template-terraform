@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 module "vpc" {
+  count = var.vpc_create ? 1 : 0
+
   source  = "terraform-aws-modules/vpc/aws"
   version = "6.7.3"
-
-  count = var.vpc_create ? 1 : 0
 
   name               = local.vpc_name
   cidr               = var.vpc_cidr
@@ -54,10 +54,14 @@ module "eks" {
         max_size       = var.default_mng_max_size
         min_size       = var.default_mng_min_size
         subnet_ids     = var.node_subnet_ids != null ? var.node_subnet_ids : (var.vpc_create ? module.vpc[0].private_subnets : var.subnet_ids)
-        taints         = []
+        taints         = {}
       }
     },
-    var.extra_managed_node_groups
+    {
+      for name, group in var.extra_managed_node_groups : name => merge(group, {
+        taints = { for taint in group.taints : "${taint.key}:${taint.effect}" => taint }
+      })
+    }
   )
 
   # Optional Fargate profiles

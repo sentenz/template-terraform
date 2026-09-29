@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.6](https://github.com/sentenz/template-terraform/compare/1.0.5...1.0.6) (2026-09-29)
+
+### Bug Fixes
+
+* **deps:** update terraform dependencies ([#82](https://github.com/sentenz/template-terraform/issues/82)) ([b44cd10](https://github.com/sentenz/template-terraform/commit/b44cd10cc03cd782d207a519b66a7292a113ae50))
+
 ## [1.0.5](https://github.com/sentenz/template-terraform/compare/1.0.4...1.0.5) (2026-09-22)
 
 ### Bug Fixes

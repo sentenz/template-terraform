@@ -31,11 +31,6 @@
       "security"
     ]
   },
-  "registryAliases": {
-    "$CI_REGISTRY": "registry.samscm.net",
-    "$CI_SERVER_FQDN": "gitlab.samscm.net",
-    "$CI_SERVER_HOST": "gitlab.samscm.net"
-  },
   "gitlabci": {
     "managerFilePatterns": [
       "/\\.gitlab-ci\\.ya?ml$/",

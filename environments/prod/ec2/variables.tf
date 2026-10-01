@@ -141,18 +141,6 @@ variable "dtrack_security_group_ingress_ipv6_cidr_blocks" {
   }
 }
 
-variable "dtrack_security_group_ingress_rules" {
-  description = "List of ingress rules for the security group."
-  type        = list(string)
-  default     = ["https-443-tcp"]
-}
-
-variable "dtrack_security_group_egress_rules" {
-  description = "List of egress rules for the security group."
-  type        = list(string)
-  default     = ["https-443-tcp"]
-}
-
 variable "dtrack_eip_create" {
   description = "Specifies whether a public EIP will be created and associated with the instance."
   type        = bool

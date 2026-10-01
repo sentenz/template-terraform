@@ -14,10 +14,28 @@ module "component_analysis" {
   vpc_id     = data.aws_vpc.existing.id
 
   # Security Group
-  security_group_ingress_cidr_blocks      = var.dtrack_security_group_ingress_cidr_blocks
-  security_group_ingress_ipv6_cidr_blocks = var.dtrack_security_group_ingress_ipv6_cidr_blocks
-  security_group_ingress_rules            = var.dtrack_security_group_ingress_rules
-  security_group_egress_rules             = var.dtrack_security_group_egress_rules
+  security_group_ingress_rules = merge(
+    {
+      for index, cidr in var.dtrack_security_group_ingress_cidr_blocks :
+      "https-ipv4-${index}" => {
+        cidr_ipv4   = cidr
+        description = "HTTPS from trusted IPv4 network"
+        from_port   = 443
+        ip_protocol = "tcp"
+        to_port     = 443
+      }
+    },
+    {
+      for index, cidr in var.dtrack_security_group_ingress_ipv6_cidr_blocks :
+      "https-ipv6-${index}" => {
+        cidr_ipv6   = cidr
+        description = "HTTPS from trusted IPv6 network"
+        from_port   = 443
+        ip_protocol = "tcp"
+        to_port     = 443
+      }
+    }
+  )
 
   # EC2 Instance
   ec2_instance_type = var.dtrack_ec2_instance_type

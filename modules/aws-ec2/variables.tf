@@ -148,63 +148,60 @@ variable "security_group_description" {
   default     = "Security group for AWS EC2 Module."
 }
 
-variable "security_group_ingress_cidr_blocks" {
-  description = "List of trusted IPv4 CIDR blocks allowed for ingress. Public ingress from 0.0.0.0/0 is rejected."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for cidr in var.security_group_ingress_cidr_blocks :
-      can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
-    ])
-    error_message = "Each IPv4 ingress entry must be a valid CIDR block and must not be 0.0.0.0/0."
-  }
-}
-
-variable "security_group_ingress_ipv6_cidr_blocks" {
-  description = "List of trusted IPv6 CIDR blocks allowed for ingress. Public ingress from ::/0 is rejected."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for cidr in var.security_group_ingress_ipv6_cidr_blocks :
-      can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
-    ])
-    error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
-  }
-}
-
 variable "security_group_ingress_rules" {
-  description = "List of ingress rules for the security group for least privilege."
-  type        = list(string)
-  default     = ["https-443-tcp"]
+  description = "Map of explicit ingress rules. Public IPv4/IPv6 ingress is rejected."
+  type = map(object({
+    name                         = optional(string)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    from_port                    = optional(number)
+    ip_protocol                  = optional(string, "tcp")
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+    to_port                      = optional(number)
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for rule in values(var.security_group_ingress_rules) :
+      rule.cidr_ipv4 != "0.0.0.0/0" && rule.cidr_ipv6 != "::/0"
+    ])
+    error_message = "Public ingress from 0.0.0.0/0 or ::/0 is not allowed."
+  }
 }
 
 variable "security_group_egress_rules" {
-  description = "List of egress rules for the security group for least privilege."
-  type        = list(string)
-  default     = ["https-443-tcp"]
-}
-
-variable "security_group_ingress_with_cidr_blocks" {
-  description = "List of ingress rules with specific trusted CIDR blocks. Public ingress tuples are rejected."
-  type = list(object({
-    cidr_blocks = string
-    from_port   = number
-    to_port     = number
-    protocol    = string
-    description = string
+  description = "Map of explicit egress rules. The default permits HTTPS only over IPv4 and IPv6."
+  type = map(object({
+    name                         = optional(string)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    from_port                    = optional(number)
+    ip_protocol                  = optional(string, "tcp")
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+    to_port                      = optional(number)
   }))
-  default = []
-
-  validation {
-    condition = alltrue([
-      for rule in var.security_group_ingress_with_cidr_blocks :
-      rule.cidr_blocks != "0.0.0.0/0" && rule.cidr_blocks != "::/0"
-    ])
-    error_message = "Public ingress tuples (0.0.0.0/0 or ::/0) are not allowed."
+  default = {
+    https-ipv4 = {
+      cidr_ipv4   = "0.0.0.0/0"
+      description = "HTTPS egress over IPv4"
+      from_port   = 443
+      ip_protocol = "tcp"
+      to_port     = 443
+    }
+    https-ipv6 = {
+      cidr_ipv6   = "::/0"
+      description = "HTTPS egress over IPv6"
+      from_port   = 443
+      ip_protocol = "tcp"
+      to_port     = 443
+    }
   }
 }
 

@@ -230,12 +230,9 @@ flowchart TB
     ami_virtualization_types = var.ami_virtualization_types
 
     # Security group configuration
-    security_group_description              = var.security_group_description
-    security_group_ingress_cidr_blocks      = var.security_group_ingress_cidr_blocks
-    security_group_ingress_ipv6_cidr_blocks = var.security_group_ingress_ipv6_cidr_blocks
-    security_group_ingress_rules            = var.security_group_ingress_rules
-    security_group_egress_rules             = var.security_group_egress_rules
-    security_group_ingress_with_cidr_blocks = var.security_group_ingress_with_cidr_blocks
+    security_group_description   = var.security_group_description
+    security_group_ingress_rules = var.security_group_ingress_rules
+    security_group_egress_rules  = var.security_group_egress_rules
 
     # EC2 instance configuration
     ec2_instance_type = var.ec2_instance_type

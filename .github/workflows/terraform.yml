@@ -159,9 +159,22 @@ jobs:
           format: sarif
           output: trivy-terraform.sarif
           severity: HIGH,CRITICAL
-          exit-code: "1"
+          exit-code: "0"
           trivy-config: trivy.yaml
           trivyignore-file: .trivyignore
+      - name: Enforce Trivy findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          findings="$(jq '[.runs[]?.results[]?] | length' trivy-terraform.sarif)"
+          if (( findings > 0 )); then
+            echo "::error::Trivy found ${findings} HIGH/CRITICAL Terraform misconfiguration(s)."
+            jq -r '
+              .runs[]?.results[]?
+              | "- \(.ruleId): \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri // "unknown"):line \(.locations[0].physicalLocation.region.startLine // 0)]"
+            ' trivy-terraform.sarif
+            exit 1
+          fi
       - name: Upload Trivy SARIF
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2

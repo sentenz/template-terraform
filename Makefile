@@ -635,10 +635,10 @@ tf-eks-destroy:
 
 ## Discover runnable Terraform roots and reusable modules
 tf-discover-roots:
-	@find environments modules -type d -name .terraform -prune -o -type f -name main.tf -print | \
-		while read -r main; do \
-			root="${main%/main.tf}"; \
-			if [[ -f "$root/versions.tf" ]]; then printf '%s\n' "$root"; fi; \
+	@find environments modules -type d -name .terraform -prune -o -type f -name main.tf -print | \\
+		while read -r main; do \\
+			root="$${main%/main.tf}"; \\
+			if [[ -f "$$root/versions.tf" ]]; then printf '%s\\n' "$$root"; fi; \\
 		done | sort -u
 .PHONY: tf-discover-roots
 
@@ -646,43 +646,43 @@ tf-discover-roots:
 #
 ## Initialize without the backend and validate one Terraform root
 tf-validate-root:
-	@if [[ -z "$(TF_ROOT)" || ! -f "$(TF_ROOT)/main.tf" || ! -f "$(TF_ROOT)/versions.tf" ]]; then \
-		echo "usage: make tf-validate-root TF_ROOT=<terraform-root>" >&2; \
-		exit 1; \
+	@if [[ -z "$(TF_ROOT)" || ! -f "$(TF_ROOT)/main.tf" || ! -f "$(TF_ROOT)/versions.tf" ]]; then \\
+		echo "usage: make tf-validate-root TF_ROOT=<terraform-root>" >&2; \\
+		exit 1; \\
 	fi
-	@lock_flag=""; \
-	if [[ -f "$(TF_ROOT)/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi; \
-	terraform -chdir="$(TF_ROOT)" init -backend=false -input=false $lock_flag; \
+	@lock_flag=""; \\
+	if [[ -f "$(TF_ROOT)/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi; \\
+	terraform -chdir="$(TF_ROOT)" init -backend=false -input=false $$lock_flag; \\
 	terraform -chdir="$(TF_ROOT)" validate
 .PHONY: tf-validate-root
 
 ## Run native Terraform unit tests using mocked providers where configured
 tf-test-unit:
-	@roots="$(find environments modules -type d -name .terraform -prune -o -type f -path '*/tests/*_unit_test.tftest.hcl' -print | sed -E 's#/tests/[^/]+$##' | sort -u)"; \
-	if [[ -z "$roots" ]]; then echo "error: no Terraform unit tests found" >&2; exit 1; fi; \
-	for root in $roots; do \
-		echo "==> Terraform unit tests: $root"; \
-		lock_flag=""; \
-		if [[ -f "$root/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi; \
-		terraform -chdir="$root" init -backend=false -input=false $lock_flag; \
-		terraform -chdir="$root" test; \
+	@roots="$$(find environments modules -type d -name .terraform -prune -o -type f -path '*/tests/*_unit_test.tftest.hcl' -print | sed -E 's#/tests/[^/]+$$##' | sort -u)"; \\
+	if [[ -z "$$roots" ]]; then echo "error: no Terraform unit tests found" >&2; exit 1; fi; \\
+	for root in $$roots; do \\
+		echo "==> Terraform unit tests: $$root"; \\
+		lock_flag=""; \\
+		if [[ -f "$$root/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi; \\
+		terraform -chdir="$$root" init -backend=false -input=false $$lock_flag; \\
+		terraform -chdir="$$root" test; \\
 	done
 .PHONY: tf-test-unit
 
 ## Run real-cloud Terraform integration tests after explicit confirmation
 tf-test-integration:
-	@if [[ "${TF_INTEGRATION_CONFIRM:-}" != "1" ]]; then \
-		echo "error: integration tests create real non-production AWS resources; set TF_INTEGRATION_CONFIRM=1 and use a dedicated test identity" >&2; \
-		exit 1; \
+	@if [[ "$${TF_INTEGRATION_CONFIRM:-}" != "1" ]]; then \\
+		echo "error: integration tests create real non-production AWS resources; set TF_INTEGRATION_CONFIRM=1 and use a dedicated test identity" >&2; \\
+		exit 1; \\
 	fi
-	@roots="$(find environments modules -type d -name .terraform -prune -o -type f -path '*/integration-tests/*_integration_test.tftest.hcl' -print | sed -E 's#/integration-tests/[^/]+$##' | sort -u)"; \
-	if [[ -z "$roots" ]]; then echo "error: no Terraform integration tests found" >&2; exit 1; fi; \
-	for root in $roots; do \
-		echo "==> Terraform integration tests: $root"; \
-		lock_flag=""; \
-		if [[ -f "$root/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi; \
-		terraform -chdir="$root" init -backend=false -input=false $lock_flag; \
-		terraform -chdir="$root" test -test-directory=integration-tests; \
+	@roots="$$(find environments modules -type d -name .terraform -prune -o -type f -path '*/integration-tests/*_integration_test.tftest.hcl' -print | sed -E 's#/integration-tests/[^/]+$$##' | sort -u)"; \\
+	if [[ -z "$$roots" ]]; then echo "error: no Terraform integration tests found" >&2; exit 1; fi; \\
+	for root in $$roots; do \\
+		echo "==> Terraform integration tests: $$root"; \\
+		lock_flag=""; \\
+		if [[ -f "$$root/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi; \\
+		terraform -chdir="$$root" init -backend=false -input=false $$lock_flag; \\
+		terraform -chdir="$$root" test -test-directory=integration-tests; \\
 	done
 .PHONY: tf-test-integration
 
@@ -706,10 +706,17 @@ tf-format-check:
 ## Format Terraform and Sentinel files
 tf-format-infra:
 	terraform fmt -recursive
-	sentinel fmt -check=false $(find . -type f -name "*.sentinel" -not -path "*/.sentinel/*")
+	sentinel fmt -check=false $$(find . -type f -name "*.sentinel" -not -path "*/.sentinel/*")
 .PHONY: tf-format-infra
 
 # ── Terraform Policy Manager ─────────────────────────────────────────────────────────────────────
+
+# Policy-as-Code compliance testing
+tf-test-policy:
+	sentinel fmt -check=true $$(find tests/policy -name "*.sentinel" -type f)
+	sentinel test $$(find tests/policy -name "*.sentinel" -type f)
+.PHONY: tf-test-policy
+
 
 # Policy-as-Code compliance testing
 tf-test-policy:

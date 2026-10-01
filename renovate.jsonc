@@ -252,18 +252,6 @@
         "pinDigest"
       ],
       "minimumReleaseAge": null
-    },
-    {
-      "description": "ghcr.io, quay.io and registry.gitlab.com expose no release timestamps; raise their updates without an age check instead of holding them indefinitely. Add other private registries here as needed.",
-      "matchDatasources": [
-        "docker"
-      ],
-      "matchPackageNames": [
-        "/^ghcr\\.io\\//",
-        "/^quay\\.io\\//",
-        "/^registry\\.gitlab\\.com\\//"
-      ],
-      "minimumReleaseAgeBehaviour": "timestamp-optional"
     }
   ]
 }

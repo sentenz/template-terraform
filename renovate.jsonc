@@ -1,15 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:best-practices",
+    "customManagers:gitlabPipelineVersions"
   ],
-  "rebaseWhen": "behind-base-branch",
+  "semanticCommits": "enabled",
   "minimumReleaseAge": "1 day",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
   "internalChecksFilter": "strict",
   "dependencyDashboard": true,
-  "prHourlyLimit": 0,
-  "prConcurrentLimit": 0,
   "ignorePaths": [
     "**/vendor/**",
     "**/node_modules/**",
@@ -28,22 +27,33 @@
     "dependencies"
   ],
   "vulnerabilityAlerts": {
-    "enabled": true,
-    "labels": [
+    "addLabels": [
       "security"
-    ],
-    "automerge": false
+    ]
+  },
+  "gitlabci": {
+    "managerFilePatterns": [
+      "/\\.gitlab-ci\\.ya?ml$/",
+      "/(^|/)\\.gitlab/ci/.+\\.ya?ml$/"
+    ]
+  },
+  "gitlabci-include": {
+    "managerFilePatterns": [
+      "/\\.gitlab-ci\\.ya?ml$/",
+      "/(^|/)\\.gitlab/ci/.+\\.ya?ml$/"
+    ]
   },
   "customManagers": [
     {
       "customType": "regex",
       "description": "Update versioned Docker image references in Makefiles.",
       "managerFilePatterns": [
+        "templates/*.{yml,yaml}",
+        "**/templates/*.{yml,yaml}",
         "**/[Mm]akefile",
         "**/GNUMakefile",
         "**/*.mk"
       ],
-      "matchStringsStrategy": "any",
       "matchStrings": [
         "(?<depName>(?:(?:[A-Za-z0-9.-]+(?::[0-9]+)?/)?[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+)):(?<currentValue>v?\\d[0-9A-Za-z_.-]*)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?"
       ],
@@ -53,116 +63,103 @@
     }
   ],
   "packageRules": [
+    // ─── Terraform / OpenTofu ───────────────────────────────────────────────────────────────────
     {
-      "description": "Group major updates.",
+      "description": "Group all minor and patch updates for Terraform/OpenTofu (providers, modules, tooling, lock file).",
       "matchManagers": [
-        "!terraform"
+        "terraform",
+        "terraform-version",
+        "terragrunt",
+        "terragrunt-version",
+        "tflint-plugin"
       ],
-      "matchDatasources": [
-        "!docker"
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "terraform non-major",
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Group all major updates for Terraform/OpenTofu (providers, modules, tooling, lock file).",
+      "matchManagers": [
+        "terraform",
+        "terraform-version",
+        "terragrunt",
+        "terragrunt-version",
+        "tflint-plugin"
       ],
       "matchUpdateTypes": [
         "major"
       ],
-      "groupName": "major versions",
-      "groupSlug": "major-versions",
-      "automerge": false
-    },
-    {
-      "description": "Group minor updates.",
-      "matchManagers": [
-        "!terraform"
+      "addLabels": [
+        "major"
       ],
-      "matchDatasources": [
-        "!docker"
-      ],
-      "matchUpdateTypes": [
-        "minor"
-      ],
-      "groupName": "minor versions",
-      "groupSlug": "minor-versions",
-      "automerge": false
-    },
-    {
-      "description": "Group patch updates.",
-      "matchManagers": [
-        "!terraform"
-      ],
-      "matchDatasources": [
-        "!docker"
-      ],
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "groupName": "patch versions",
-      "groupSlug": "patch-versions",
-      "automerge": false
-    },
-    {
-      "description": "Group Terraform dependency updates from Terraform and OpenTofu files.",
-      "matchManagers": [
-        "terraform"
-      ],
-      "matchFileNames": [
-        "**/*.tf",
-        "**/*.tofu",
-        "**/.terraform.lock.hcl"
-      ],
-      "matchUpdateTypes": [
-        "major",
-        "minor",
-        "patch"
-      ],
-      "groupName": "terraform dependencies",
-      "groupSlug": "terraform-dependencies",
-      "semanticCommits": "enabled",
       "semanticCommitType": "fix",
-      "semanticCommitScope": "deps",
       "automerge": false
     },
+    // ─── CI/CD ──────────────────────────────────────────────────────────────────────────────────
     {
-      "description": "Pin Dockerfile and Containerfile images to immutable digests.",
+      "description": "Group CI/CD pipelines (GitHub Actions, GitLab CI).",
       "matchManagers": [
-        "dockerfile"
+        "github-actions",
+        "gitlabci",
+        "gitlabci-include"
       ],
-      "matchDatasources": [
-        "docker"
-      ],
-      "pinDigests": true,
-      "automerge": false
+      "semanticCommitType": "ci"
     },
     {
-      "description": "Group Dockerfile and Containerfile image updates.",
+      "description": "GitHub Actions: batch non-major action updates (digest pins are kept by helpers:pinGitHubActionDigests).",
       "matchManagers": [
-        "dockerfile"
+        "github-actions"
       ],
-      "matchDatasources": [
-        "docker"
+      "matchDepTypes": [
+        "action"
       ],
       "matchUpdateTypes": [
-        "major",
         "minor",
         "patch",
-        "digest"
+        "digest",
+        "pin",
+        "pinDigest"
       ],
-      "pinDigests": true,
-      "groupName": "dockerfile container images",
-      "groupSlug": "dockerfile-container-images",
-      "automerge": false
+      "groupName": "github actions"
     },
     {
-      "description": "Pin custom-manager Docker images to immutable digests.",
+      "description": "GitLab CI: batch non-major component and project include updates.",
       "matchManagers": [
-        "custom.regex"
+        "gitlabci",
+        "gitlabci-include"
+      ],
+      "matchDatasources": [
+        "gitlab-tags"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "gitlab ci includes"
+    },
+    // ─── Container Images ───────────────────────────────────────────────────────────────────────
+    {
+      "description": "Dockerfile/Containerfile images: batch non-major updates.",
+      "matchManagers": [
+        "dockerfile"
       ],
       "matchDatasources": [
         "docker"
       ],
-      "pinDigests": true,
-      "automerge": false
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest"
+      ],
+      "groupName": "dockerfile container images"
     },
     {
-      "description": "Group Docker image updates in Makefiles.",
+      "description": "Makefile images: batch non-major updates.",
       "matchManagers": [
         "custom.regex"
       ],
@@ -175,52 +172,86 @@
         "**/*.mk"
       ],
       "matchUpdateTypes": [
-        "major",
         "minor",
         "patch",
-        "digest"
+        "digest",
+        "pin",
+        "pinDigest"
       ],
-      "pinDigests": true,
-      "groupName": "makefile container images",
-      "groupSlug": "makefile-container-images",
-      "automerge": true
+      "groupName": "makefile container images"
     },
     {
-      "description": "Pin Docker images used by GitHub Actions to immutable digests.",
+      "description": "GitHub Actions container/service images: batch non-major updates.",
       "matchManagers": [
         "github-actions"
       ],
-      "matchDepTypes": [
-        "docker",
-        "container",
-        "service"
-      ],
-      "pinDigests": true,
-      "automerge": true
-    },
-    {
-      "description": "Group Docker image updates used by GitHub Actions.",
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchDepTypes": [
-        "docker",
-        "container",
-        "service"
+      "matchDatasources": [
+        "docker"
       ],
       "matchUpdateTypes": [
-        "major",
         "minor",
         "patch",
-        "digest"
+        "digest",
+        "pin",
+        "pinDigest"
       ],
-      "pinDigests": true,
-      "groupName": "github actions container images",
-      "groupSlug": "github-actions-container-images",
-      "semanticCommits": "enabled",
-      "semanticCommitType": "ci",
-      "semanticCommitScope": "deps",
+      "groupName": "github actions container images"
+    },
+    {
+      "description": "GitLab CI job and service images: batch non-major updates.",
+      "matchManagers": [
+        "gitlabci"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest"
+      ],
+      "groupName": "gitlab ci container images"
+    },
+    {
+      "description": "Automerge low-risk CI tooling images (Makefile, GitHub Actions, GitLab CI) once required checks pass.",
+      "matchManagers": [
+        "custom.regex",
+        "github-actions",
+        "gitlabci"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest"
+      ],
       "automerge": true
+    },
+    {
+      "description": "Terraform/OpenTofu CLI images decide plan behaviour.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "**/terraform",
+        "**/opentofu"
+      ],
+      "groupName": null,
+      "automerge": false
+    },
+    // ─── Release-age Exceptions ─────────────────────────────────────────────────────────────────
+    {
+      "description": "Pinning an existing tag to its digest changes no version, so don't hold it behind the cooldown.",
+      "matchUpdateTypes": [
+        "pinDigest"
+      ],
+      "minimumReleaseAge": null
     }
   ]
 }

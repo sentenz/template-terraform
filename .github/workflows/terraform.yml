@@ -9,6 +9,7 @@ on:
     paths:
       - "**/*.tf"
       - "**/*.tfvars"
+      - "**/.terraform.lock.hcl"
       - "**/*.tftest.hcl"
       - ".github/workflows/terraform.yml"
       - ".tflint.hcl"
@@ -19,6 +20,7 @@ on:
     paths:
       - "**/*.tf"
       - "**/*.tfvars"
+      - "**/.terraform.lock.hcl"
       - "**/*.tftest.hcl"
       - ".github/workflows/terraform.yml"
       - ".tflint.hcl"

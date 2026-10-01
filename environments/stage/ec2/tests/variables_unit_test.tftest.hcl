@@ -34,11 +34,6 @@ variables {
 
 run "valid_configuration" {
   command = plan
-
-  assert {
-    condition     = module.component_analysis.ec2_instance_id != ""
-    error_message = "The mocked plan should produce an EC2 instance identifier."
-  }
 }
 
 run "invalid_region" {

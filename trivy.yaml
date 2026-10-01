@@ -218,7 +218,7 @@ misconfiguration:
     - terraformplan-json
     - terraformplan-snapshot
   terraform:
-    exclude-downloaded-modules: false
+    exclude-downloaded-modules: true
     vars: []
 module:
   dir: /root/.trivy/modules

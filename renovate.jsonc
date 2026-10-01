@@ -3,27 +3,20 @@
   "extends": [
     "config:recommended"
   ],
-  "rebaseWhen": "behind-base-branch",
+  "rebaseWhen": "auto",
   "minimumReleaseAge": "1 day",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
   "internalChecksFilter": "strict",
   "dependencyDashboard": true,
   "prHourlyLimit": 0,
-  "prConcurrentLimit": 0,
+  "prConcurrentLimit": 10,
   "ignorePaths": [
     "**/vendor/**",
     "**/node_modules/**",
     "**/bower_components/**",
-    "**/charts/**",
-    "test/**",
-    "tests/**"
+    "**/.terraform/**",
+    "**/.terragrunt-cache/**"
   ],
-  "nuget": {
-    "ignorePaths": [
-      "tests/**",
-      "**/tests/**"
-    ]
-  },
   "labels": [
     "dependencies"
   ],
@@ -99,26 +92,66 @@
       "automerge": false
     },
     {
-      "description": "Group Terraform dependency updates from Terraform and OpenTofu files.",
+      "description": "Keep Terraform changes under manual review with semantic dependency commits.",
       "matchManagers": [
         "terraform"
       ],
-      "matchFileNames": [
-        "**/*.tf",
-        "**/*.tofu",
-        "**/.terraform.lock.hcl"
+      "automerge": false,
+      "semanticCommits": "enabled",
+      "semanticCommitType": "fix",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "Group non-major Terraform provider updates.",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchDepTypes": [
+        "provider",
+        "required_provider"
       ],
       "matchUpdateTypes": [
-        "major",
         "minor",
         "patch"
       ],
-      "groupName": "terraform dependencies",
-      "groupSlug": "terraform-dependencies",
-      "semanticCommits": "enabled",
-      "semanticCommitType": "fix",
-      "semanticCommitScope": "deps",
-      "automerge": false
+      "groupName": "terraform providers (non-major)",
+      "groupSlug": "terraform-providers-non-major"
+    },
+    {
+      "description": "Group non-major Terraform module updates.",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchDepTypes": [
+        "module"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "terraform modules (non-major)",
+      "groupSlug": "terraform-modules-non-major"
+    },
+    {
+      "description": "Review Terraform runtime constraints separately.",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchDepTypes": [
+        "required_version",
+        "tfe_workspace"
+      ],
+      "groupName": null
+    },
+    {
+      "description": "Review major Terraform upgrades individually, including inherited preset groups.",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": null
     },
     {
       "description": "Pin Dockerfile and Containerfile images to immutable digests.",
@@ -222,5 +255,14 @@
       "semanticCommitScope": "deps",
       "automerge": true
     }
-  ]
+  ],
+  "terraform": {
+    "lockFileMaintenance": {
+      "enabled": true,
+      "schedule": [
+        "* * * * 6,0"
+      ],
+      "automerge": false
+    }
+  }
 }

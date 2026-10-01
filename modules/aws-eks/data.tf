@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
+# Retain the AMI lookup while its inputs remain part of the module interface.
+# tflint-ignore: terraform_unused_declarations
 data "aws_ami" "machine" {
   most_recent = var.ami_most_recent
   owners      = var.ami_owners

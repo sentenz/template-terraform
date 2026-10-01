@@ -6,9 +6,10 @@ A Terraform module collection to provision infrastructure for deploying on AWS.
   - [1.1. Modules](#11-modules)
 - [2. Usage](#2-usage)
   - [2.1. Authentication](#21-authentication)
-    - [2.1.1. AWS Administrator Access](#211-aws-administrator-access)
+    - [2.1.1. AWS Credential Chain](#211-aws-credential-chain)
     - [2.1.2. SSH Key Pair](#212-ssh-key-pair)
-- [3. Contribution](#2-contribution)
+  - [2.2. CI/CD](#22-cicd)
+- [3. Contribution](#3-contribution)
 - [4. Troubleshoot](#4-troubleshoot)
   - [4.1. Snapshot](#41-snapshot)
     - [4.1.1. Restore Snapshot](#411-restore-snapshot)
@@ -34,70 +35,25 @@ A Terraform module collection to provision infrastructure for deploying on AWS.
 
 ### 2.1. Authentication
 
-#### 2.1.1. AWS Administrator Access
+#### 2.1.1. AWS Credential Chain
 
-AWS Administrator Access requires secure management of credentials. It is essential that sensitive information is protected, and that multiple access profiles are maintained in the local [AWS credentials file](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
+Terraform uses the standard AWS SDK credential chain rather than hard-coding a shared-credentials profile in provider or backend configuration. The same roots therefore work with short-lived local credentials and GitHub Actions OIDC.
 
-1. AWS Credentials Configuration
+For local development, prefer AWS IAM Identity Center/SSO and select the intended account outside HCL:
 
-    > [!NOTE]
-    > The **shared credentials file** typically resides in the `~/.aws/credentials` directory on the local machine to interact with AWS programmatically, configure AWS over Terraform.
+```bash
+AWS_PROFILE=stage make tf-ec2-deploy TF_ENV=stage
+AWS_PROFILE=prod make tf-ec2-deploy TF_ENV=prod
+```
 
-    - `~/.aws/credentials`
-      > [!TIP]
-      > Retrieve the AWS Access Key ID and Secret Access Key from the AWS IAM Identity Center.
+Do not use broad administrator access as the default Terraform identity. Grant only the permissions required by the target stack and state backend.
 
-      ```ini
-      [default]
-      aws_access_key_id = <YOUR_ACCESS_KEY>
-      aws_secret_access_key = <YOUR_SECRET_KEY>
-      aws_session_token = <YOUR_SESSION_TOKEN>
+For GitHub Actions, the optional manual plan workflow uses GitHub OIDC to assume an environment-specific AWS IAM role. No AWS access key ID or secret access key is stored in GitHub. Configure the `stage` and/or `prod` GitHub Environments with:
 
-      [stage]
-      aws_access_key_id = <STAGE_ACCESS_KEY>
-      aws_secret_access_key = STAGE_SECRET_KEY>
-      aws_session_token = <STAGE_SESSION_TOKEN>
+- `AWS_ROLE_ARN` — environment-specific IAM role ARN trusted for this repository/environment.
+- `AWS_REGION` — AWS region for STS/API operations (the included stacks use `eu-central-1`).
 
-      [prod]
-      aws_access_key_id = <PROD_ACCESS_KEY>
-      aws_secret_access_key = <PROD_SECRET_KEY>
-      aws_session_token = <PROD_SESSION_TOKEN>
-      ```
-
-2. Terraform Integration
-
-    - Reference the access profiles in the Terraform `provider.tf` configuration file.
-
-      - `provider.tf`
-
-        ```hcl
-        provider "aws" {
-          region  = var.region
-          profile = "default"
-        }
-        ```
-
-    - Define separate `provider.tf` files in each environment directory for environment-specific configurations and credentials.
-      > [!IMPORTANT]
-      > If the root directory has a `provider.tf`, delete it to avoid inheritance conflicts. Terraform modules inherit providers from the root by default, but environment-specific directories should manage their own providers.
-
-      - `environments/stage/provider.tf`
-
-        ```hcl
-        provider "aws" {
-          region  = var.region
-          profile = "stage"
-        }
-        ```
-
-      - `environments/prod/provider.tf`
-
-        ```hcl
-        provider "aws" {
-          region  = var.region
-          profile = "prod"
-        }
-        ```
+The AWS role trust policy should require `aud=sts.amazonaws.com` and an environment-specific `sub`, for example `repo:sentenz/template-terraform:environment:stage`. Production should use a distinct role and required reviewers on the `prod` GitHub Environment.
 
 #### 2.1.2. SSH Key Pair
 
@@ -195,6 +151,54 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
           default     = "~/.ssh/aws-prod.pub"
         }
         ```
+
+## 2.2. CI/CD
+
+This repository is a reusable Terraform template/module collection, so it does not automatically apply infrastructure. Pull requests run fast, non-privileged validation; cloud-authenticated planning is an explicit manual operation.
+
+```text
+Terraform-relevant PR/push
+        |
+        +-- format + TFLint
+        +-- native mocked unit tests
+        +-- Sentinel policy tests
+        +-- Trivy Terraform configuration scan
+        |
+        +-- discover roots from main.tf + versions.tf
+                 |
+                 +-- init -backend=false + validate (matrix)
+
+workflow_dispatch: Terraform Plan
+        |
+        +-- validate deployable root
+        +-- protected GitHub Environment
+        +-- GitHub OIDC -> environment AWS role
+        +-- remote-backend init + plan
+        +-- sanitized change counts only
+```
+
+Runnable Terraform roots are discovered from repository structure; `.gitkeep` placeholders are ignored. Shared-module changes therefore validate all active roots rather than relying on a brittle stack list.
+
+The manual plan workflow accepts a deployable path such as `environments/stage/ec2`. Full plan output and binary plan files remain runner-local because this repository is public. No workflow performs `terraform apply`. Consumers that add deployment automation should apply only a reviewed plan behind a protected GitHub Environment and stack-specific non-canceling concurrency.
+
+Fast local equivalents:
+
+```bash
+make tf-format-check
+make tf-lint-infra
+make tf-test-unit
+make tf-test-policy
+make tf-discover-roots
+make tf-validate-root TF_ROOT=environments/stage/ec2
+```
+
+Real-cloud integration tests are excluded from ordinary PR CI. They require a dedicated non-production AWS identity and explicit opt-in:
+
+```bash
+TF_INTEGRATION_CONFIRM=1 make tf-test-integration
+```
+
+The S3 backends retain `encrypt = true` and Terraform native `use_lockfile = true`. Backend bootstrap is a separate lifecycle and is not created by the roots that consume it.
 
 ## 3. Contribution
 
@@ -316,13 +320,14 @@ Inspect the mappings of the instances to triage current state.
 
 When a module or resource path is refactored but the actual infrastructure remains the same, migrate the Terraform state to the new addresses instead of recreating resources.
 
-1. Backup State
+1. Preserve a Recovery Point
 
-    Backup the state file in the environment directory before any changes.
+    The included stacks use remote S3 state. Prefer S3 bucket versioning as the durable recovery mechanism. If a temporary local snapshot is required, pull it explicitly, restrict its permissions, never commit or upload it, and remove it after the migration is verified.
 
     ```bash
     cd environments/<env>/<component>
-    cp terraform.tfstate terraform.tfstate.backup.$(date +%s)
+    umask 077
+    terraform state pull > "/tmp/terraform-state-backup-$(date +%s).json"
     ```
 
 2. Inspect State

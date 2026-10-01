@@ -11,12 +11,6 @@ variable "region" {
   }
 }
 
-variable "profile" {
-  description = "The AWS credentials stored in `~/.aws/credentials` under a specific profile."
-  type        = string
-  default     = "stage"
-}
-
 variable "tags" {
   description = "Global resource tags."
   type        = map(string)

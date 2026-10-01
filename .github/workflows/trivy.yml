@@ -4,133 +4,58 @@ name: Trivy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trivy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  trivy-fs-scan:
-    name: Trivy Action - Filesystem Scan
+  filesystem:
+    name: Filesystem vulnerabilities
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Run Trivy Filesystem Scan
+      - name: Run Trivy filesystem scan
         uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
         with:
           scan-type: fs
           scan-target: "."
           format: sarif
           output: trivy-results.sarif
-
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          trivy-config: trivy.yaml
+          trivyignore-file: .trivyignore
       - name: Upload results to GitHub Security
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: trivy-results.sarif
-        continue-on-error: false
 
-  trivy-config-scan:
-    name: Trivy Action - Configuration Scan
+  license:
+    name: License compliance
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Run Trivy Config Scan
-        uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
-        with:
-          scan-type: config
-          scan-target: "."
-          format: sarif
-          output: trivy-iac.sarif
-          severity: HIGH,CRITICAL
-
-      - name: Upload Trivy Config Scan
-        if: always()
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
-        with:
-          sarif_file: trivy-iac.sarif
-        continue-on-error: false
-
-  trivy-sbom-generation:
-    name: Trivy Action - SBOM Generation
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Run SBOM Generation (CycloneDX)
-        uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
-        with:
-          scan-type: sbom-generate
-          scan-target: "."
-          format: cyclonedx
-          output: sbom.cdx.json
-
-      - name: Run SBOM Generation (SPDX)
-        uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
-        with:
-          scan-type: sbom-generate
-          scan-target: "."
-          format: spdx-json
-          output: sbom.spdx.json
-
-      - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: sbom-files
-          path: |
-            sbom.cdx.json
-            sbom.spdx.json
-
-  trivy-sbom-scan:
-    name: Trivy Action - SBOM Scan
-    runs-on: ubuntu-latest
-    needs: trivy-sbom-generation
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Download SBOM artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: sbom-files
-
-      - name: Scan SBOM for vulnerabilities
-        uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
-        with:
-          scan-type: sbom
-          scan-target: sbom.cdx.json
-        continue-on-error: false
-
-  trivy-license-compliance:
-    name: Trivy Action - License Compliance
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Run License Compliance Scan
+      - name: Run license compliance scan
         uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
         with:
           scan-type: fs
           scan-target: "."
           scanners: license
           format: table
-        continue-on-error: false
+          trivy-config: trivy.yaml
+          trivyignore-file: .trivyignore

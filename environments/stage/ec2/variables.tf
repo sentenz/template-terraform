@@ -11,12 +11,6 @@ variable "region" {
   }
 }
 
-variable "profile" {
-  description = "The AWS credentials stored in `~/.aws/credentials` under a specific profile."
-  type        = string
-  default     = "stage"
-}
-
 variable "tags" {
   description = "Global resource tags."
   type        = map(string)
@@ -66,12 +60,6 @@ variable "dtrack_ec2_instance_type" {
     condition     = contains(["t3.nano", "t3.micro", "t3.small", "t3.medium", "t3.large", "t3.xlarge", "t3.2xlarge"], var.dtrack_ec2_instance_type)
     error_message = "EC2 instance type must be one of t3.nano, t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, or t3.2xlarge."
   }
-}
-
-variable "ec2_subnet_id" {
-  description = "The VPC Subnet ID to launch in."
-  type        = string
-  default     = null
 }
 
 variable "dtrack_ebs_root_size" {
@@ -151,18 +139,6 @@ variable "dtrack_security_group_ingress_ipv6_cidr_blocks" {
     ])
     error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
   }
-}
-
-variable "dtrack_security_group_ingress_rules" {
-  description = "List of ingress rules for the security group."
-  type        = list(string)
-  default     = ["https-443-tcp"]
-}
-
-variable "dtrack_security_group_egress_rules" {
-  description = "List of egress rules for the security group."
-  type        = list(string)
-  default     = ["https-443-tcp"]
 }
 
 variable "dtrack_eip_create" {

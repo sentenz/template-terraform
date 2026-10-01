@@ -8,5 +8,4 @@ locals {
   eip_name            = "${var.name}_eip"
   ebs_root_name       = "${var.name}_ebs-root"
   ebs_data_name       = "${var.name}_ebs-data"
-  name_suffix         = "${var.tags["Name"]}-${var.tags["Environment"]}"
 }

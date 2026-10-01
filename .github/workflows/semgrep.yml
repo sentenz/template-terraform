@@ -1,26 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
 
-name: Semgrep
+name: Code Security
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: code-security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   semgrep:
-    name: Semgrep Action
+    name: Semgrep
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: Run Semgrep
         uses: sentenz/actions/semgrep@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
         with:
           config: "auto"
           metrics: "auto"
           no-secrets-validation: "true"
+
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Scan repository history
+        run: make sast-gitleaks-detect

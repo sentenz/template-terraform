@@ -75,50 +75,66 @@ variable "vpc_single_nat_gateway" {
   default     = false
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_most_recent" {
-  description = "Use the most recent AMI from the list."
+  description = "Deprecated: unused by EKS managed node groups. Use the most recent AMI from the list."
   type        = bool
   default     = true
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_owners" {
-  description = "AMI Owners."
+  description = "Deprecated: unused by EKS managed node groups. AMI Owners."
   type        = list(string)
   default     = ["amazon"]
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_image_name" {
-  description = "The name used to select Amazon Machine Images (AMIs)."
+  description = "Deprecated: unused by EKS managed node groups. The name used to select Amazon Machine Images (AMIs)."
   type        = string
   default     = "name"
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_image_patterns" {
-  description = "The AMI pattern to search for, e.g., Amazon Linux 2023 (AL2023) IDs."
+  description = "Deprecated: unused by EKS managed node groups. The AMI pattern to search for, e.g., Amazon Linux 2023 (AL2023) IDs."
   type        = list(string)
   default     = ["al2023-ami-2023*-x86_64"]
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_virtualization_name" {
-  description = "The virtualization method used by the AMI."
+  description = "Deprecated: unused by EKS managed node groups. The virtualization method used by the AMI."
   type        = string
   default     = "virtualization-type"
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_virtualization_types" {
-  description = "The virtualization standard, e.g., Hardware Machine Virtual (HVM) used by Amazon EC2 instances."
+  description = "Deprecated: unused by EKS managed node groups. The virtualization standard, e.g., Hardware Machine Virtual (HVM) used by Amazon EC2 instances."
   type        = list(string)
   default     = ["hvm"]
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_device_name" {
-  description = "The root device type used by the AMI."
+  description = "Deprecated: unused by EKS managed node groups. The root device type used by the AMI."
   type        = string
   default     = "root-device-type"
 }
 
+# Legacy input retained for caller compatibility; managed node groups select their own AMIs.
+# tflint-ignore: terraform_unused_declarations
 variable "ami_device_types" {
-  description = "The root device type, typically EBS-backed for encryption support."
+  description = "Deprecated: unused by EKS managed node groups. The root device type, typically EBS-backed for encryption support."
   type        = list(string)
   default     = ["ebs"]
 }
@@ -181,18 +197,37 @@ variable "default_mng_min_size" {
   description = "Minimum size for the default EKS managed node group."
   type        = number
   default     = 2
+
+  validation {
+    condition     = var.default_mng_min_size >= 0 && floor(var.default_mng_min_size) == var.default_mng_min_size
+    error_message = "default_mng_min_size must be a nonnegative integer."
+  }
 }
 
 variable "default_mng_desired_size" {
   description = "Desired size for the default EKS managed node group."
   type        = number
   default     = 3
+
+  validation {
+    condition = (
+      floor(var.default_mng_desired_size) == var.default_mng_desired_size &&
+      var.default_mng_desired_size >= var.default_mng_min_size &&
+      var.default_mng_desired_size <= var.default_mng_max_size
+    )
+    error_message = "default_mng_desired_size must be an integer between default_mng_min_size and default_mng_max_size."
+  }
 }
 
 variable "default_mng_max_size" {
   description = "Maximum size for the default EKS managed node group."
   type        = number
   default     = 6
+
+  validation {
+    condition     = var.default_mng_max_size >= 1 && floor(var.default_mng_max_size) == var.default_mng_max_size
+    error_message = "default_mng_max_size must be a positive integer."
+  }
 }
 
 variable "default_mng_capacity_type" {

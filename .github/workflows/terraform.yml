@@ -1,97 +1,157 @@
 # SPDX-License-Identifier: Apache-2.0
 
-name: Terraform
+name: Terraform CI
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "**/*.tf"
       - "**/*.tfvars"
-      - "**/.terraform.lock.hcl"
       - "**/*.tftest.hcl"
-      - ".github/workflows/terraform.yml"
+      - "**/.terraform.lock.hcl"
+      - ".github/workflows/terraform*.yml"
       - ".tflint.hcl"
       - "trivy.yaml"
+      - ".trivyignore"
+      - "sentinel.hcl"
+      - "tests/**"
+      - "modules/**"
+      - "environments/**"
+      - "Makefile"
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "**/*.tf"
       - "**/*.tfvars"
-      - "**/.terraform.lock.hcl"
       - "**/*.tftest.hcl"
-      - ".github/workflows/terraform.yml"
+      - "**/.terraform.lock.hcl"
+      - ".github/workflows/terraform*.yml"
       - ".tflint.hcl"
       - "trivy.yaml"
+      - ".trivyignore"
+      - "sentinel.hcl"
+      - "tests/**"
+      - "modules/**"
+      - "environments/**"
+      - "Makefile"
 
 permissions:
   contents: read
 
+concurrency:
+  group: terraform-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
 jobs:
-  static-checks:
-    name: Static checks
+  discover:
+    name: Discover Terraform roots
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      roots: ${{ steps.roots.outputs.roots }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Discover roots
+        id: roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t roots < <(make -s tf-discover-roots)
+          if (( ${#roots[@]} == 0 )); then
+            echo "::error::No Terraform roots were discovered."
+            exit 1
+          fi
+          json="$(printf '%s\n' "${roots[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          echo "roots=${json}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "### Terraform roots"
+            printf -- "- `%s`\n" "${roots[@]}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
+  quality:
+    name: Format and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: v1.16.4
-
-      - name: Terraform format check
-        run: terraform fmt -check -recursive
-
+      - name: Check Terraform formatting
+        run: make tf-format-check
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
-
-      - name: Initialize TFLint plugins
-        run: tflint --init
-
+        with:
+          tflint_version: v0.64.0
       - name: Run TFLint
-        run: tflint --recursive
+        run: make tf-lint-infra
+
+  unit-tests:
+    name: Native Terraform unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: v1.16.4
+      - name: Run unit tests
+        run: make tf-test-unit
+
+  policy:
+    name: Sentinel policy tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Sentinel
+        uses: hashicorp/setup-sentinel@1a822142c5ef19ab729a2cf6c28f8f4c8f588fee # v0.0.2
+        with:
+          version: 0.41.0
+      - name: Run policy tests
+        run: make tf-test-policy
 
   validate:
-    name: Validate ${{ matrix.stack }}
+    name: Validate ${{ matrix.root }}
     runs-on: ubuntu-latest
-    needs: static-checks
+    timeout-minutes: 15
+    needs: [discover]
     strategy:
       fail-fast: false
       matrix:
-        stack:
-          - environments/stage/ec2
-          - environments/prod/ec2
-          - environments/stage/eks
+        root: ${{ fromJSON(needs.discover.outputs.roots) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: v1.16.4
-
-      - name: Terraform init without backend
-        run: terraform -chdir=${{ matrix.stack }} init -backend=false
-
-      - name: Terraform validate
-        run: terraform -chdir=${{ matrix.stack }} validate
+      - name: Initialize and validate
+        run: make tf-validate-root TF_ROOT="${{ matrix.root }}"
 
   security:
-    name: Security scan
+    name: Terraform IaC security
     runs-on: ubuntu-latest
-    needs: validate
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Trivy IaC scan
+      - name: Run Trivy configuration scan
         uses: sentenz/actions/trivy@c600775dda21753455e72c46d37d32b452c35817 # 1.5.0
         with:
           scan-type: config
@@ -99,9 +159,24 @@ jobs:
           format: sarif
           output: trivy-terraform.sarif
           severity: HIGH,CRITICAL
-
+          exit-code: "0"
+          trivy-config: trivy.yaml
+          trivyignore-file: .trivyignore
+      - name: Enforce Trivy findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          findings="$(jq '[.runs[]?.results[]?] | length' trivy-terraform.sarif)"
+          if (( findings > 0 )); then
+            echo "::error::Trivy found ${findings} HIGH/CRITICAL Terraform misconfiguration(s)."
+            jq -r '
+              .runs[]?.results[]?
+              | "- \(.ruleId): \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri // "unknown"):line \(.locations[0].physicalLocation.region.startLine // 0)]"
+            ' trivy-terraform.sarif
+            exit 1
+          fi
       - name: Upload Trivy SARIF
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: trivy-terraform.sarif

@@ -277,11 +277,11 @@ sast-semgrep-scan:
 SAST_IMAGE_TRIVY ?= aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
 SAST_FILES_TRIVY ?= .
 
-## Scan Infrastructure-as-Code (IaC) files for misconfigurations using Trivy and generate a report
+## Scan Infrastructure-as-Code (IaC) files for HIGH/CRITICAL misconfigurations using Trivy
 sast-trivy-misconfig:
 	@mkdir -p logs/sast
 
-	docker run --rm -v "${PWD}:/workspace" -w /workspace "$(SAST_IMAGE_TRIVY)" config --output logs/sast/trivy-misconfig.json $(SAST_FILES_TRIVY) 2>&1
+	docker run --rm -v "${PWD}:/workspace" -w /workspace "$(SAST_IMAGE_TRIVY)" config --exit-code 1 --severity HIGH,CRITICAL --tf-exclude-downloaded-modules --output logs/sast/trivy-misconfig.json $(SAST_FILES_TRIVY) 2>&1
 .PHONY: sast-trivy-misconfig
 
 ## Scan local filesystem for vulnerabilities and misconfigurations using Trivy
@@ -633,29 +633,77 @@ tf-eks-destroy:
 
 # ── Terraform Test & Analysis ────────────────────────────────────────────────────────────────────
 
-# Unit Testing of Terraform Infrastructure Code
+## Discover runnable Terraform roots and reusable modules
+tf-discover-roots:
+	@find environments modules -type d -name .terraform -prune -o -type f -name main.tf -print |
+		while read -r main; do
+			root="$${main%/main.tf}"
+			if [[ -f "$$root/versions.tf" ]]; then printf '%s\n' "$$root"; fi
+		done | sort -u
+.PHONY: tf-discover-roots
+
+# Usage: make tf-validate-root TF_ROOT=<terraform-root>
+#
+## Initialize without the backend and validate one Terraform root
+tf-validate-root:
+	@if [[ -z "$(TF_ROOT)" || ! -f "$(TF_ROOT)/main.tf" || ! -f "$(TF_ROOT)/versions.tf" ]]; then
+		echo "usage: make tf-validate-root TF_ROOT=<terraform-root>" >&2
+		exit 1
+	fi
+	lock_flag=""
+	if [[ -f "$(TF_ROOT)/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi
+	terraform -chdir="$(TF_ROOT)" init -backend=false -input=false $$lock_flag
+	terraform -chdir="$(TF_ROOT)" validate
+.PHONY: tf-validate-root
+
+## Run native Terraform unit tests using mocked providers where configured
 tf-test-unit:
-	terraform test -test-directory="tests/unit"
+	@roots="$$(find environments modules -type d -name .terraform -prune -o -type f -path '*/tests/*_unit_test.tftest.hcl' -print | sed -E 's#/tests/[^/]+$$##' | sort -u)"
+	if [[ -z "$$roots" ]]; then echo "error: no Terraform unit tests found" >&2; exit 1; fi
+	for root in $$roots; do
+		echo "==> Terraform unit tests: $$root"
+		lock_flag=""
+		if [[ -f "$$root/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi
+		terraform -chdir="$$root" init -backend=false -input=false $$lock_flag
+		terraform -chdir="$$root" test
+	done
 .PHONY: tf-test-unit
 
-# Integration Testing of Terraform Infrastructure Code
+## Run real-cloud Terraform integration tests after explicit confirmation
 tf-test-integration:
-	terraform test -test-directory="tests/integration"
+	@if [[ "$${TF_INTEGRATION_CONFIRM:-}" != "1" ]]; then
+		echo "error: integration tests create real non-production AWS resources; set TF_INTEGRATION_CONFIRM=1 and use a dedicated test identity" >&2
+		exit 1
+	fi
+	roots="$$(find environments modules -type d -name .terraform -prune -o -type f -path '*/integration-tests/*_integration_test.tftest.hcl' -print | sed -E 's#/integration-tests/[^/]+$$##' | sort -u)"
+	if [[ -z "$$roots" ]]; then echo "error: no Terraform integration tests found" >&2; exit 1; fi
+	for root in $$roots; do
+		echo "==> Terraform integration tests: $$root"
+		lock_flag=""
+		if [[ -f "$$root/.terraform.lock.hcl" ]]; then lock_flag="-lockfile=readonly"; fi
+		terraform -chdir="$$root" init -backend=false -input=false $$lock_flag
+		terraform -chdir="$$root" test -test-directory=integration-tests
+	done
 .PHONY: tf-test-integration
 
-## Perform aggregate testing of Terraform Infrastructure Code
+## Perform aggregate fast Terraform testing
 tf-test-infra:
 	@$(MAKE) -s tf-test-policy
-	@$(MAKE) -s tf-test-unit
+	$(MAKE) -s tf-test-unit
 .PHONY: tf-test-infra
 
-## Static Analysis and Security Scanning of Terraform Code
+## Static analysis of Terraform code
 tf-lint-infra:
+	tflint --init
 	tflint --recursive
-	trivy config $(@D)/ --tf-exclude-downloaded-modules
 .PHONY: tf-lint-infra
 
-## Formatting of Terraform and Sentinel Files
+## Check Terraform formatting without modifying files
+tf-format-check:
+	terraform fmt -check -recursive
+.PHONY: tf-format-check
+
+## Format Terraform and Sentinel files
 tf-format-infra:
 	terraform fmt -recursive
 	sentinel fmt -check=false $$(find . -type f -name "*.sentinel" -not -path "*/.sentinel/*")
@@ -665,9 +713,9 @@ tf-format-infra:
 
 # Policy-as-Code compliance testing
 tf-test-policy:
-	sentinel test $$(find . -name "*.sentinel" -type f)
+	sentinel fmt -check=true $$(find tests/policy -name "*.sentinel" -type f)
+	sentinel test $$(find tests/policy -name "*.sentinel" -type f)
 .PHONY: tf-test-policy
-
 # ── Terraform Miscellaneous ──────────────────────────────────────────────────────────────────────
 
 # Usage: make tf-docs-infra <module>

@@ -31,6 +31,7 @@ Contribution guidelines and project management tools.
 - [13. Supply Chain Manager](#13-supply-chain-manager)
   - [13.1. Trivy](#131-trivy)
 - [14. Documentation Generators](#14-documentation-generators)
+- [15. Terraform CI/CD](#15-terraform-cicd)
   - [14.1. Doxygen](#141-doxygen)
   - [14.2. MkDocs](#142-mkdocs)
 
@@ -332,7 +333,7 @@ AI Agents are automated tools that assist in various development tasks such as c
       > Configuration file for Conftest specifying policy paths and output formats.
 
     - [tests/policy/](tests/policy/)
-      > Directory contains Rego policies for Conftest to enforce best practices and compliance standards.
+      > The current Terraform policy suite is Sentinel-based. Conftest remains generic project tooling, but Terraform CI does not add a second policy framework without a concrete requirement.
 
 2. Usage and Instructions
 
@@ -561,3 +562,27 @@ Software Supply Chain Security for identifying vulnerabilities in dependencies b
       ```bash
       make pages-mkdocs-serve
       ```
+
+
+## 15. Terraform CI/CD
+
+Terraform CI separates portable engineering commands from GitHub orchestration. The Makefile is the local contract used by CI where practical:
+
+```bash
+make tf-format-check
+make tf-lint-infra
+make tf-test-unit
+make tf-test-policy
+make tf-discover-roots
+make tf-validate-root TF_ROOT=environments/stage/ec2
+```
+
+`tf-discover-roots` considers a directory runnable when it contains both `main.tf` and `versions.tf`; placeholder directories are therefore excluded automatically. CI validates every discovered environment root and reusable module.
+
+Native unit tests live below the Terraform configuration they test and use mock providers so ordinary pull requests do not require AWS credentials. Real-cloud tests live in `integration-tests/` and are not part of fast PR CI. Running them requires a dedicated non-production AWS identity and explicit confirmation:
+
+```bash
+TF_INTEGRATION_CONFIRM=1 make tf-test-integration
+```
+
+GitHub Actions dependencies are pinned to immutable commit SHAs. Terraform-authenticated workflows use GitHub OIDC and environment-scoped `AWS_ROLE_ARN`/`AWS_REGION` variables; long-lived AWS access keys are not part of the CI design. The repository does not include an apply workflow because it is a reusable template. Production deployment automation should be added only by a consuming repository with protected GitHub Environments, reviewed plans, least-privilege environment-specific roles, and non-canceling stack-specific apply concurrency.

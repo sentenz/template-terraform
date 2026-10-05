@@ -199,59 +199,59 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
 
 ### 2.2. Terraform and Provider Versions
 
-Terraform uses version constraints for `required_version`, provider
-requirements, and registry module versions. Comma-separated conditions are
-combined with AND; every condition must hold.
+Version constraints define acceptable Terraform, provider, and registry module versions. Apply the following policy to keep deployments reproducible and upgrades reviewable.
 
-| Constraint | Accepted versions |
-| --- | --- |
-| `3.2.1` or `= 3.2.1` | Exactly 3.2.1; cannot combine with other conditions. |
-| `!= 3.3.0` | All except 3.3.0. |
-| `>= 2.38.0` | 2.38.0 and newer. |
-| `> 2.38.0` | Newer than 2.38.0. |
-| `< 3.0.0` / `<= 3.0.0` | Below 3.0.0 / up to and including 3.0.0. |
-| `>= 2.38.0, < 3.4.0` | 2.38.0 through versions below 3.4.0, including 3.x. |
-| `~> 2.38` | `>= 2.38.0, < 3.0.0`: minor and patch updates. |
-| `~> 2.38.0` | `>= 2.38.0, < 2.39.0`: patch updates only. |
+1. Version Constraints
 
-Root and child constraints intersect; a root cannot override a child's
-requirement. Conflicting constraints prevent dependency resolution.
-Pre-releases require an exact constraint, such as `= 3.4.0-beta.1`.
+    - **Reusable Modules** (`modules/`): Declare minimum Terraform and provider versions with `>=`. Raise a minimum when the module requires a newer version.
+    - **Deployment Roots** (`environments/`): Use `~>` to bound provider updates, or an exact version for individually reviewed upgrades.
+    - **Third-Party Modules**: Pin registry module versions explicitly.
 
-Reusable modules in `modules/` declare minimum Terraform and provider
-versions with `>=`. Deployment roots in `environments/` control provider
-upgrade boundaries. HashiCorp recommends `~>` for root providers; exact pins
-are a deliberate alternative for individually reviewed automated updates.
-The EKS staging root currently pins Kubernetes provider `3.2.1`.
+    | Constraint | Purpose | Example |
+    | --- | --- | --- |
+    | `>= 2.38.0` | Minimum version | Allows 2.38.0 and newer. |
+    | `~> 2.38` | Minor and patch updates | Allows 2.38.0 through 2.x; excludes 3.0.0. |
+    | `~> 2.38.0` | Patch updates | Allows 2.38.x only. |
+    | `3.2.1` | Exact version | Allows 3.2.1 only. |
 
-Commit each deployment root's `.terraform.lock.hcl`: constraints define
-acceptable provider versions, while the lock file records selected versions
-and checksums. Routine initialization reuses compatible locked selections.
-The lock file does not lock remote module versions; pin third-party registry
-modules explicitly for controlled upgrades.
+    > [!NOTE]
+    > All root and child constraints must be satisfied. Commas mean AND: `>= 2.38, < 3.4` allows both 2.x and 3.x releases within that range. See [version constraints](https://developer.hashicorp.com/terraform/language/expressions/version-constraints) for the complete syntax.
 
-Renovate or Dependabot can propose deployment-root upgrades and lock-file
-changes. Raise a reusable module's minimum only when its requirements change.
-Minimum constraints do not guarantee compatibility with future releases;
-review release notes and validate upgrades before merging.
+2. Dependency Lock File
 
-For routine validation, use the committed selections:
+    Commit `.terraform.lock.hcl` in each deployment root. It records selected provider versions and checksums; routine initialization reuses compatible selections. Remote module versions are managed separately through their version constraints.
 
-```bash
-terraform fmt -check -recursive
-terraform -chdir=environments/stage/eks init -backend=false -lockfile=readonly
-terraform -chdir=environments/stage/eks validate
-```
+3. Routine Validation
 
-For an intentional provider upgrade, adjust the root constraint as needed,
-run `terraform -chdir=environments/stage/eks init -upgrade`, and review all
-lock-file changes. With staging credentials and backend access, run
-`terraform -chdir=environments/stage/eks plan -out=tfplan` and review the
-plan before applying. Keep provider upgrades separate from functional changes.
+    Validate with the committed provider selections. The following example uses staging EKS:
 
-References: HashiCorp's [version constraints](https://developer.hashicorp.com/terraform/language/expressions/version-constraints),
-[provider version best practices](https://developer.hashicorp.com/terraform/language/providers/requirements#best-practices-for-provider-versions),
-and [dependency lock file guidance](https://developer.hashicorp.com/terraform/language/files/dependency-lock).
+    ```bash
+    terraform fmt -check -recursive
+    terraform -chdir=environments/stage/eks init -backend=false -lockfile=readonly
+    terraform -chdir=environments/stage/eks validate
+    ```
+
+4. Provider Upgrades
+
+    Review release notes and adjust the deployment root's constraint as needed. Renovate or Dependabot can propose these changes. Keep upgrades separate from functional changes.
+
+    With staging credentials and backend access, initialize the upgrade and validate:
+
+    ```bash
+    terraform -chdir=environments/stage/eks init -upgrade
+    terraform -chdir=environments/stage/eks validate
+    ```
+
+    Review the lock-file changes, then generate and review the plan before applying:
+
+    ```bash
+    terraform -chdir=environments/stage/eks plan -out=tfplan
+    ```
+
+    > [!IMPORTANT]
+    > A version constraint does not guarantee compatibility. Validate automated updates and review the staging plan before merging.
+
+See HashiCorp's [provider version best practices](https://developer.hashicorp.com/terraform/language/providers/requirements#best-practices-for-provider-versions) and [dependency lock file guidance](https://developer.hashicorp.com/terraform/language/files/dependency-lock).
 
 ## 3. Contribution
 

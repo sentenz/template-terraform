@@ -8,6 +8,7 @@ A Terraform module collection to provision infrastructure for deploying on AWS.
   - [2.1. Authentication](#21-authentication)
     - [2.1.1. AWS Administrator Access](#211-aws-administrator-access)
     - [2.1.2. SSH Key Pair](#212-ssh-key-pair)
+  - [2.2. Terraform and Provider Versions](#22-terraform-and-provider-versions)
 - [3. Contribution](#2-contribution)
 - [4. Troubleshoot](#4-troubleshoot)
   - [4.1. Snapshot](#41-snapshot)
@@ -195,6 +196,37 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
           default     = "~/.ssh/aws-prod.pub"
         }
         ```
+
+### 2.2. Terraform and Provider Versions
+
+Reusable modules in `modules/` declare minimum provider versions with `>=`.
+Deployment roots in `environments/` own the upper bounds or exact pins. For
+example, `>= 2.38, < 3.4` permits both Kubernetes provider 2.x and 3.x; it does
+not protect against a major upgrade. A root constraint such as `~> 2.38`
+permits 2.x releases from 2.38 onward and excludes 3.x, while `~> 2.38.0`
+permits only 2.38.x patches. The EKS staging root currently pins `3.2.1`.
+
+Commit each deployment root's `.terraform.lock.hcl` to preserve the selected
+provider versions and checksums. Minimum constraints describe module
+requirements; they do not guarantee compatibility with every future release.
+Review provider release notes and test upgrades in the deployment root.
+
+For routine validation, use the committed selections without upgrading:
+
+```bash
+terraform fmt -check -recursive
+terraform -chdir=environments/stage/eks init -backend=false -lockfile=readonly
+terraform -chdir=environments/stage/eks validate
+```
+
+For an intentional provider upgrade, adjust the root constraint as needed,
+run `terraform -chdir=environments/stage/eks init -upgrade`, and review all
+lock-file changes. With staging credentials and backend access, run
+`terraform -chdir=environments/stage/eks plan -out=tfplan` and review the
+plan before applying. Keep provider upgrades separate from functional changes.
+
+See HashiCorp's [provider version best practices](https://developer.hashicorp.com/terraform/language/providers/requirements#best-practices-for-provider-versions)
+and [dependency lock file guidance](https://developer.hashicorp.com/terraform/language/files/dependency-lock).
 
 ## 3. Contribution
 

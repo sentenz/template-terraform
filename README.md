@@ -8,6 +8,7 @@ A Terraform module collection to provision infrastructure for deploying on AWS.
   - [2.1. Authentication](#21-authentication)
     - [2.1.1. AWS Administrator Access](#211-aws-administrator-access)
     - [2.1.2. SSH Key Pair](#212-ssh-key-pair)
+  - [2.2. Terraform and Provider Versions](#22-terraform-and-provider-versions)
 - [3. Contribution](#2-contribution)
 - [4. Troubleshoot](#4-troubleshoot)
   - [4.1. Snapshot](#41-snapshot)
@@ -195,6 +196,62 @@ SSH (Secure Shell) is used to securely access AWS instances to perform automatiz
           default     = "~/.ssh/aws-prod.pub"
         }
         ```
+
+### 2.2. Terraform and Provider Versions
+
+Version constraints define acceptable Terraform, provider, and registry module versions. Apply the following policy to keep deployments reproducible and upgrades reviewable.
+
+1. Version Constraints
+
+    - **Reusable Modules** (`modules/`): Declare minimum Terraform and provider versions with `>=`. Raise a minimum when the module requires a newer version.
+    - **Deployment Roots** (`environments/`): Use `~>` to bound provider updates, or an exact version for individually reviewed upgrades.
+    - **Third-Party Modules**: Pin registry module versions explicitly.
+
+    | Constraint | Purpose | Example |
+    | --- | --- | --- |
+    | `>= 2.38.0` | Minimum version | Allows 2.38.0 and newer. |
+    | `~> 2.38` | Minor and patch updates | Allows 2.38.0 through 2.x; excludes 3.0.0. |
+    | `~> 2.38.0` | Patch updates | Allows 2.38.x only. |
+    | `3.2.1` | Exact version | Allows 3.2.1 only. |
+
+    > [!NOTE]
+    > All root and child constraints must be satisfied. Commas mean AND: `>= 2.38, < 3.4` allows both 2.x and 3.x releases within that range. See [version constraints](https://developer.hashicorp.com/terraform/language/expressions/version-constraints) for the complete syntax.
+
+2. Dependency Lock File
+
+    Commit `.terraform.lock.hcl` in each deployment root. It records selected provider versions and checksums; routine initialization reuses compatible selections. Remote module versions are managed separately through their version constraints.
+
+3. Routine Validation
+
+    Validate with the committed provider selections. The following example uses staging EKS:
+
+    ```bash
+    terraform fmt -check -recursive
+    terraform -chdir=environments/stage/eks init -backend=false -lockfile=readonly
+    terraform -chdir=environments/stage/eks validate
+    ```
+
+4. Provider Upgrades
+
+    Review release notes and adjust the deployment root's constraint as needed. Renovate or Dependabot can propose these changes. Keep upgrades separate from functional changes.
+
+    With staging credentials and backend access, initialize the upgrade and validate:
+
+    ```bash
+    terraform -chdir=environments/stage/eks init -upgrade
+    terraform -chdir=environments/stage/eks validate
+    ```
+
+    Review the lock-file changes, then generate and review the plan before applying:
+
+    ```bash
+    terraform -chdir=environments/stage/eks plan -out=tfplan
+    ```
+
+    > [!IMPORTANT]
+    > A version constraint does not guarantee compatibility. Validate automated updates and review the staging plan before merging.
+
+See HashiCorp's [provider version best practices](https://developer.hashicorp.com/terraform/language/providers/requirements#best-practices-for-provider-versions) and [dependency lock file guidance](https://developer.hashicorp.com/terraform/language/files/dependency-lock).
 
 ## 3. Contribution
 

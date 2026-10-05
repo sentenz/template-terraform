@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.7](https://github.com/sentenz/template-terraform/compare/1.0.6...1.0.7) (2026-10-05)
+
+### Bug Fixes
+
+* **terraform:** let deployment roots govern provider version bounds ([#91](https://github.com/sentenz/template-terraform/issues/91)) ([273488b](https://github.com/sentenz/template-terraform/commit/273488b4cf9b727f8f19d36d37c97289dd61e82e))
+
 ## [1.0.6](https://github.com/sentenz/template-terraform/compare/1.0.5...1.0.6) (2026-09-29)
 
 ### Bug Fixes

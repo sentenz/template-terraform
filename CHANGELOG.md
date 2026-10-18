@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.8](https://github.com/sentenz/template-terraform/compare/1.0.7...1.0.8) (2026-10-18)
+
+### Bug Fixes
+
+* **deps:** update terraform non-major ([#97](https://github.com/sentenz/template-terraform/issues/97)) ([8e2fc99](https://github.com/sentenz/template-terraform/commit/8e2fc99770b01115ccec1b8473b5fbfd28d54775))
+
 ## [1.0.7](https://github.com/sentenz/template-terraform/compare/1.0.6...1.0.7) (2026-10-05)
 
 ### Bug Fixes

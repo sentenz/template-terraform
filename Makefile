@@ -635,11 +635,13 @@ tf-eks-destroy:
 
 # Unit Testing of Terraform Infrastructure Code
 tf-test-unit:
+	terraform init -backend=false -input=false -test-directory="tests/unit"
 	terraform test -test-directory="tests/unit"
 .PHONY: tf-test-unit
 
 # Integration Testing of Terraform Infrastructure Code
 tf-test-integration:
+	terraform init -backend=false -input=false -test-directory="tests/integration"
 	terraform test -test-directory="tests/integration"
 .PHONY: tf-test-integration
 

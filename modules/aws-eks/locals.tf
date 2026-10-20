@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 locals {
+  vpc_name = "${var.name}_vpc"
+
   addons_default = {
     coredns = {
       most_recent = true

@@ -21,7 +21,7 @@ module "component_analysis" {
 
   # EC2 Instance
   ec2_instance_type = var.dtrack_ec2_instance_type
-  ec2_subnet_id     = data.aws_subnet.existing_private_az2.id
+  ec2_subnet_id     = var.ec2_subnet_id != null ? var.ec2_subnet_id : data.aws_subnet.existing_private_az2.id
 
   # EBS Volume
   ebs_data_create      = var.dtrack_ebs_data_create

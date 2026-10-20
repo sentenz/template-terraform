@@ -133,7 +133,7 @@ variable "dtrack_security_group_ingress_cidr_blocks" {
   validation {
     condition = alltrue([
       for cidr in var.dtrack_security_group_ingress_cidr_blocks :
-      can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+      try(cidrnetmask(cidr) != "0.0.0.0", false)
     ])
     error_message = "Each IPv4 ingress entry must be a valid CIDR block and must not be 0.0.0.0/0."
   }
@@ -147,7 +147,7 @@ variable "dtrack_security_group_ingress_ipv6_cidr_blocks" {
   validation {
     condition = alltrue([
       for cidr in var.dtrack_security_group_ingress_ipv6_cidr_blocks :
-      can(regex("^([0-9a-fA-F:]+)/(?:\\d|[1-9]\\d|1[01]\\d|12[0-8])$", cidr)) && cidr != "::/0"
+      can(cidrhost(cidr, 0)) && strcontains(cidr, ":") && try(tonumber(split("/", cidr)[1]) > 0, false)
     ])
     error_message = "Each IPv6 ingress entry must be a valid CIDR block and must not be ::/0."
   }

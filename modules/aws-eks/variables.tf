@@ -75,54 +75,6 @@ variable "vpc_single_nat_gateway" {
   default     = false
 }
 
-variable "ami_most_recent" {
-  description = "Use the most recent AMI from the list."
-  type        = bool
-  default     = true
-}
-
-variable "ami_owners" {
-  description = "AMI Owners."
-  type        = list(string)
-  default     = ["amazon"]
-}
-
-variable "ami_image_name" {
-  description = "The name used to select Amazon Machine Images (AMIs)."
-  type        = string
-  default     = "name"
-}
-
-variable "ami_image_patterns" {
-  description = "The AMI pattern to search for, e.g., Amazon Linux 2023 (AL2023) IDs."
-  type        = list(string)
-  default     = ["al2023-ami-2023*-x86_64"]
-}
-
-variable "ami_virtualization_name" {
-  description = "The virtualization method used by the AMI."
-  type        = string
-  default     = "virtualization-type"
-}
-
-variable "ami_virtualization_types" {
-  description = "The virtualization standard, e.g., Hardware Machine Virtual (HVM) used by Amazon EC2 instances."
-  type        = list(string)
-  default     = ["hvm"]
-}
-
-variable "ami_device_name" {
-  description = "The root device type used by the AMI."
-  type        = string
-  default     = "root-device-type"
-}
-
-variable "ami_device_types" {
-  description = "The root device type, typically EBS-backed for encryption support."
-  type        = list(string)
-  default     = ["ebs"]
-}
-
 variable "azs_state" {
   description = "Filter to retrieve availability zones in a specific state."
   type        = string

@@ -68,12 +68,6 @@ variable "dtrack_ec2_instance_type" {
   }
 }
 
-variable "ec2_subnet_id" {
-  description = "The VPC Subnet ID to launch in."
-  type        = string
-  default     = null
-}
-
 variable "dtrack_ebs_root_size" {
   description = "Size of the root EBS volume in GB."
   type        = number

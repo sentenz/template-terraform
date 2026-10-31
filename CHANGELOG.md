@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.9](https://github.com/sentenz/template-terraform/compare/1.0.8...1.0.9) (2026-10-31)
+
+### Bug Fixes
+
+* **deps:** bump terraform-aws-modules/eks-pod-identity/aws ([#101](https://github.com/sentenz/template-terraform/issues/101)) ([26d1af8](https://github.com/sentenz/template-terraform/commit/26d1af8f4a603ebbe1ddbb17737319e6eda0185a))
+
 ## [1.0.8](https://github.com/sentenz/template-terraform/compare/1.0.7...1.0.8) (2026-10-18)
 
 ### Bug Fixes

@@ -68,7 +68,7 @@ module "eks" {
 
 module "pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "2.9.0"
+  version = "2.10.0"
 
   associations = {
     for k, v in var.pod_identity_associations :

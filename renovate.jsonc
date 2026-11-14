@@ -8,7 +8,9 @@
   "minimumReleaseAge": "1 day",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
   "internalChecksFilter": "strict",
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "ignorePaths": [
     "**/vendor/**",
     "**/node_modules/**",

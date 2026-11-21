@@ -14,7 +14,7 @@ module "key_pair" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.7.3"
+  version = "6.8.0"
 
   count = var.vpc_create ? 1 : 0
 
